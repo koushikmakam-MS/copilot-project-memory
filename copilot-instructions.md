@@ -2,6 +2,30 @@
 <!-- PROJECT MEMORY SKILL — Do not edit this section manually -->
 <!-- Installed by copilot-project-memory. See: ~/.copilot/project-memory/ -->
 
+## 🧠 Project Memory System
+
+You have access to a persistent project memory system at `~/.copilot/project-memory/`.
+This gives you long-term memory for each project — preferences, rules, context, sessions.
+
+### IMPORTANT: Loading Memory
+
+**Whenever the user types `:status`, `:resume`, or asks to "load memory" / "check memory" / "resume session":**
+Run a directory listing of `~/.copilot/project-memory/` and find the folder matching the CWD leaf name.
+Then read `preferences.yml`, `rules.yml`, `context.yml`, and `sessions/latest.json` from that folder.
+
+**On your first reply in any conversation**, if you haven't loaded project memory yet, briefly mention:
+```
+💡 Project memory available — type :status to load, or :resume to pick up where you left off.
+```
+
+### How to Match Project Folders
+
+The memory directory contains folders named `<leaf>-<hash>` (e.g., `ai-readness-tool-62cdd147`).
+To find the right one: take the CWD leaf folder name, lowercase it, replace underscores/spaces with hyphens,
+and look for a folder that starts with that prefix. Ignore folders starting with `_`.
+
+---
+
 ## Project Memory System
 
 You have access to a persistent project memory system stored at `~/.copilot/project-memory/`.
@@ -25,74 +49,30 @@ This gives you a long-term memory for each project folder — preferences, rules
       ├── rules.yml
       ├── context.yml
       ├── extensions.yml
+      ├── tracking.yml
       ├── sessions/
-      │   ├── latest.json
-      │   └── <session-id>.json
+      │   ├── latest.json          # Active session pointer
+      │   ├── _default/            # Unnamed sessions (auto-saved)
+      │   │   └── <uuid>.json
+      │   ├── auth-refactor/       # Named session
+      │   │   ├── <uuid>.json
+      │   │   └── notes.md
+      │   └── api-migration/       # Another named session
+      │       ├── <uuid>.json
+      │       └── notes.md
       └── snippets/
           └── <name>.md
 ```
 
----
-
-### On Every Session Start
-
-1. **Determine** the current working directory (CWD).
-2. **Compute** the project slug: take the CWD leaf folder name, lowercase it, sanitize non-alphanumeric chars to hyphens, and append an 8-char SHA-256 hash of the full normalized path. Example: `my-app-a3f2b1c8`.
-3. **Check** if `~/.copilot/project-memory/<slug>/` exists.
-4. **Always show the intro banner first**, then the project-specific message:
-
-```
-🧠 Project Memory Active
-━━━━━━━━━━━━━━━━━━━━━━━━
-Quick commands:  :status · :remember · :forget · :rules · :prefs
-Full list:       :help
-```
-
-**If memory exists:**
-- Read and apply all YAML files: `preferences.yml`, `rules.yml`, `context.yml`, `extensions.yml`
-- Also read `~/.copilot/project-memory/_global/preferences.yml` and `_global/rules.yml` for global defaults
-- **Conflict resolution:** Project-level values ALWAYS override global values for the same key/rule.
-- Check `sessions/latest.json` for the most recent session
-- If a last session exists, show after the banner:
-  ```
-  📂 Welcome back to [project-name]!
-  ├─ Last session: [date] — [summary snippet]
-  ├─ Memory: [X] prefs · [Y] rules · [Z] extensions
-  └─ Resume last session or start fresh?
-  ```
-- If no last session, show after the banner:
-  ```
-  📂 [project-name] memory loaded.
-  └─ [X] prefs · [Y] rules · [Z] extensions
-  ```
-
-**If no memory exists:**
-- Create the project folder by copying `_template/`
-- **Auto-detect the stack** by scanning the CWD for:
-  - `package.json` → Node.js (check for framework in dependencies: next, react, vue, angular, express, etc.)
-  - `requirements.txt` or `pyproject.toml` or `setup.py` → Python (check for django, flask, fastapi, etc.)
-  - `Cargo.toml` → Rust
-  - `go.mod` → Go
-  - `pom.xml` or `build.gradle` → Java
-  - `*.csproj` or `*.sln` → .NET
-  - `Gemfile` → Ruby
-  - `composer.json` → PHP
-  - `pubspec.yaml` → Dart/Flutter
-- Write detected stack to `context.yml`
-- Show after the banner:
-  ```
-  📂 New project detected! Auto-detected: [stack items]
-  └─ I'll learn your preferences as we go. Say :remember to teach me rules.
-  ```
-
 ### :help Command
 
-When the user types `:help`, show a quick reference:
+When the user types `:help`, `:?`, or just `:`, show a quick reference:
 ```
 🧠 Project Memory — Quick Reference
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  :status              Show memory overview
+  :status              Load memory & show overview
+  :resume              Resume last session
   :remember <rule>     Save a do/don't rule
   :forget <rule-id>    Remove a rule
   :rules               List all rules
@@ -100,7 +80,11 @@ When the user types `:help`, show a quick reference:
   :prefs set <k> <v>   Set a preference
   :context             Show project context
   :extensions          List IDE extensions
-  :sessions            List past sessions
+  :sessions            List all sessions
+  :session new <name>  Start a named session (e.g., auth-refactor)
+  :session load <name> Switch to a named session
+  :session list        Show all named sessions
+  :session notes       View/add session notes
   :snippets            Manage code snippets
   :export team         Export for teammates
   :export editors      Export for all editors
@@ -117,7 +101,10 @@ When the user types `:help`, show a quick reference:
 
 **Before ending ANY session** — whether the user says goodbye, closes the conversation, or the session ends for any reason:
 
-1. Create a session summary JSON file in `<project>/sessions/<uuid>.json` with:
+1. Determine the active session target:
+   - If a **named session** is active (check `sessions/latest.json` → `activeSession`), save into `sessions/<name>/`
+   - Otherwise, save into `sessions/_default/`
+2. Create a session summary JSON file:
    ```json
    {
      "sessionId": "<uuid>",
@@ -129,12 +116,46 @@ When the user types `:help`, show a quick reference:
      "learnings": ["<new things learned about user preferences>"]
    }
    ```
-2. Update `sessions/latest.json` to point to this session:
+3. Update `sessions/latest.json`:
    ```json
-   { "lastSessionId": "<uuid>", "lastAccessedAt": "<ISO timestamp>" }
+   {
+     "lastSessionId": "<uuid>",
+     "lastAccessedAt": "<ISO timestamp>",
+     "activeSession": "<name or null>"
+   }
    ```
-3. If any new preferences or rules were learned during the session, update the YAML files.
-4. **Do this silently** — no need to tell the user, just do it.
+4. If any new preferences or rules were learned during the session, update the YAML files.
+5. **Do this silently** — no need to tell the user, just do it.
+
+### Named Sessions (Multiple Features)
+
+Users working on multiple features in the same project can create **named sessions** — like branches for context.
+
+#### Storage Layout
+```
+sessions/
+  ├── latest.json                  # Tracks active session
+  ├── _default/                    # Unnamed/default sessions (auto-saved)
+  │   └── <uuid>.json
+  ├── auth-refactor/               # Named session
+  │   ├── <uuid>.json              # Session entries (chronological)
+  │   └── notes.md                 # Optional working notes
+  └── api-migration/               # Another named session
+      ├── <uuid>.json
+      └── notes.md
+```
+
+#### Behavior
+- **`:session new <name>`** — Creates a new named session folder and switches to it. Future auto-saves go here.
+- **`:session save <name>`** — Saves the current session state into a named session (creates it if new).
+- **`:session load <name>`** — Switches to a named session and loads its latest entry + notes.
+- **`:session list`** — Shows all named sessions with last-accessed date and a one-line summary.
+- **`:session delete <name>`** — Removes a named session folder (asks confirmation).
+- **`:session notes`** — Show or edit the current session's `notes.md`.
+- **`:session notes <text>`** — Append a note to the active session's `notes.md`.
+- **`:resume`** — Loads whatever session was last active (named or default).
+- When no named session is active, auto-save writes to `_default/`.
+- When a named session is active, show its name in status output: `📌 Active session: auth-refactor`
 
 ---
 
@@ -344,7 +365,8 @@ stats:
 This ensures Copilot only acts on memory operations when the user explicitly intends it.
 
 The user types these as **regular chat messages** (not slash commands):
-- `:status` — show memory overview
+- `:status` — load memory & show overview
+- `:resume` — resume last session
 - `:remember always use TypeScript` — save a rule
 - `:forget rule-id` — remove a rule
 - `:rules` — list do's and don'ts
@@ -354,10 +376,35 @@ The user types these as **regular chat messages** (not slash commands):
 
 **Recognition rules:**
 1. ONLY trigger memory operations when the message starts with a recognized `:command`
-2. Recognized commands: `:status`, `:remember`, `:forget`, `:rules`, `:prefs`, `:context`, `:extensions`, `:sessions`, `:snippets`, `:export`, `:backup`, `:restore`, `:reset`, `:stats`, `:tracking`
+2. Recognized commands: `:status`, `:resume`, `:remember`, `:forget`, `:rules`, `:prefs`, `:context`, `:extensions`, `:sessions`, `:session`, `:snippets`, `:export`, `:backup`, `:restore`, `:reset`, `:stats`, `:tracking`, `:help`, `:?`
 3. Without the `:` prefix, treat "remember", "forget", "rules", etc. as normal conversation
 4. The prefix is case-insensitive: `:Status`, `:REMEMBER`, `:Rules` all work
 5. If the message doesn't start with a recognized `:command`, do NOT trigger any memory operation
+6. **If the user types `:` or `:?` or `:help` or just the word `commands`**, show a quick command menu:
+
+```
+📂 Project Memory Commands:
+
+  :status       — Load memory & show overview
+  :resume       — Resume last session
+  :help         — This menu
+
+  :remember … — Save a rule ("never use any type")
+  :forget …   — Remove a rule
+
+  :prefs        — View/set preferences
+  :rules        — View/manage do's & don'ts
+  :context      — View/edit project context
+  :extensions   — Manage IDE extensions
+  :sessions     — Browse session history
+  :snippets     — Code snippet library
+
+  :export team  — Share rules with your team
+  :backup       — Backup all memory
+  :stats        — Stats across all projects
+  :tracking     — View auto-learned patterns
+  :reset        — Wipe project memory
+```
 
 ---
 
@@ -407,7 +454,8 @@ If you notice the user correcting the same pattern multiple times in a session:
 #### Core Commands
 | User Types | What To Do |
 |-----------|------------|
-| `:status` / `:status` | Overview: preference count, rule count, extension count, session count, last accessed |
+| `:status` | Load project memory, show overview: preference count, rule count, extension count, session count, last session summary |
+| `:resume` | Load project memory, read last session, show summary, and offer to continue where you left off |
 | `:prefs` / `:prefs` | List all preferences |
 | `:prefs set <key> <value>` | Set a preference |
 | `:prefs remove <key>` | Remove a preference |
@@ -422,8 +470,15 @@ If you notice the user correcting the same pattern multiple times in a session:
 | `:extensions` / `:extensions` | List saved IDE extensions |
 | `:extensions add <id> <name>` | Save an IDE extension |
 | `:extensions remove <id>` | Remove an extension |
-| `:sessions` / `:sessions` | List saved sessions |
+| `:sessions` / `:sessions` | List saved sessions (both named and default) |
 | `:sessions last` | Show last session details |
+| `:session new <name>` | Create and switch to a named session (e.g., `:session new auth-refactor`) |
+| `:session save <name>` | Save current session state into a named session |
+| `:session load <name>` | Switch to a named session and load its context |
+| `:session list` | Show all named sessions with dates and summaries |
+| `:session delete <name>` | Remove a named session (asks confirmation) |
+| `:session notes` | Show notes for active session |
+| `:session notes <text>` | Append a note to active session's notes.md |
 | `:remember <instruction>` | Quick-add a rule (auto-detects do/don't) |
 | `:forget <rule-id>` | Remove a rule |
 

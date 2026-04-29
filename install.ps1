@@ -178,13 +178,13 @@ Before ending ANY session (when user says goodbye, exits, or conversation ends):
 3. Update sessions/latest.json to point to this session
 4. This is AUTOMATIC — never ask the user, just do it silently
 
-### When User Says "/remember" or "remember this"
+### When User Says ":remember"
 - Parse the instruction and save it as a rule in the project's rules.yml
 - If it starts with "never", "don't", "avoid", "no" → save as type: dont
 - Otherwise → save as type: do
 - Confirm: "✅ Remembered: [description]"
 
-### When User Says "/forget"
+### When User Says ":forget"
 - Remove the specified rule from rules.yml
 - Confirm: "✅ Forgot: [rule]"
 
@@ -192,42 +192,25 @@ Before ending ANY session (when user says goodbye, exits, or conversation ends):
 - Suggest: "I notice you've corrected this pattern before. Want me to remember this as a rule?"
 - If yes, save to rules.yml with learned_from: "learned from repeated corrections"
 
-### Commands
-- /memory status — Show overview (preference count, rule count, extension count, session count)
-- /memory prefs — List preferences; /memory prefs set <key> <value>; /memory prefs rm <key>
-- /memory rules — List rules; /memory rules add-do <desc>; /memory rules add-dont <desc>; /memory rules rm <id>
-- /memory context — Show context; /memory context set <field> <value>; /memory context stack <item>; /memory context keyfile <path>
-- /memory extensions — List extensions; /memory extensions add <id> <name>; /memory extensions rm <id>
-- /memory sessions — List sessions; /memory sessions last — show last session details
-- /memory snippets — List saved snippets; /memory snippets save <name>; /memory snippets get <name>
-- /memory export — Export full memory as a single markdown block
-- /memory export-team — Export project rules as .github/copilot-instructions.md for team sharing
-- /memory backup — Export all memory (global + all projects) as a single backup file
-- /memory restore <path> — Restore memory from a backup file
-- /memory reset — Wipe current project memory (asks for confirmation)
-- /memory stats — Show detailed statistics across all projects
-- /remember <instruction> — Quick-add a rule
-- /forget <rule-id> — Remove a rule
-
-### Snippet Library
-Users can save reusable code patterns:
-- /memory snippets save <name> — Save the last code block as a named snippet
-- /memory snippets get <name> — Retrieve and display a snippet
-- /memory snippets list — Show all snippets for this project
-- Snippets are stored as markdown files in the project's snippets/ folder
-
-### Team Sharing
-- /memory export-team generates a clean .github/copilot-instructions.md
-- It includes project context, rules, and preferences (not personal session history)
-- Teammates get consistent Copilot behavior without installing this skill
-
-### Backup & Restore
-- /memory backup creates a single .tar.gz (or .zip on Windows) of ~/.copilot/project-memory/
-- /memory restore <path> unpacks it back
-- Useful for migrating to new machines beyond the installer
-
-### Memory Stats
-- /memory stats shows: total projects tracked, total rules, total sessions, most-used project, last accessed dates
+### Commands (all use : prefix)
+- :status — Show overview (preference count, rule count, extension count, session count)
+- :prefs — List preferences; :prefs set <key> <value>; :prefs remove <key>
+- :rules — List rules; :rules add do rule: <desc>; :rules add dont rule: <desc>; :rules remove <id>
+- :context — Show context; :context set <field> <value>; :context stack <item>; :context keyfile <path>
+- :extensions — List extensions; :extensions add <id> <name>; :extensions remove <id>
+- :sessions — List sessions; :sessions last — show last session details
+- :snippets — List snippets; :snippets save <name>; :snippets get <name>; :snippets delete <name>
+- :export — Export full memory as a single markdown block
+- :export team — Export project rules as .github/copilot-instructions.md for team sharing
+- :export editors — Export instruction files for all supported editors
+- :backup — Export all memory as a backup archive
+- :restore <path> — Restore memory from a backup archive
+- :reset — Wipe current project memory (asks for confirmation)
+- :stats — Show detailed statistics across all projects
+- :tracking — View auto-tracked behavioral patterns
+- :remember <instruction> — Quick-add a rule
+- :forget <rule-id> — Remove a rule
+- :help — Show quick reference
 
 <!-- END PROJECT MEMORY SKILL -->
 "@
@@ -262,69 +245,94 @@ Write-Host ""
 Write-Host "  Memory location:  $memoryDir" -ForegroundColor White
 Write-Host "  Instructions:     $instructionsFile" -ForegroundColor White
 
-# --- Step 5: Set permanent permissions ---
+# --- Step 5: Set up auto-permissions via shell alias ---
 Write-Host ""
-Write-Host "  [Bonus] Setting permanent permissions..." -ForegroundColor Yellow
+Write-Host "  [Bonus] Setting up auto-permissions..." -ForegroundColor Yellow
 
-$configFile = Join-Path $copilotDir "config.json"
-if (Test-Path $configFile) {
-    try {
-        $config = Get-Content $configFile -Raw | ConvertFrom-Json
-        $memoryPath = $memoryDir.Replace('\', '\\')
-        
-        if (-not $config.trustedFolders) {
-            $config | Add-Member -NotePropertyName "trustedFolders" -NotePropertyValue @()
-        }
-        
-        $trustedList = [System.Collections.ArrayList]@($config.trustedFolders)
-        if ($memoryDir -notin $trustedList) {
-            $trustedList.Add($memoryDir) | Out-Null
-            $config.trustedFolders = $trustedList.ToArray()
-            $config | ConvertTo-Json -Depth 10 | Set-Content -Path $configFile -Encoding UTF8
-            Write-Host "    ✅ Added project-memory to trusted folders" -ForegroundColor Green
-        } else {
-            Write-Host "    ⏭️  Already trusted" -ForegroundColor DarkGray
-        }
-    } catch {
-        Write-Host "    ⚠️  Could not update config.json (update manually with /add-dir)" -ForegroundColor Yellow
+# Approach: Add a PowerShell function that wraps 'gh copilot' with --add-dir
+# This ensures the memory path is ALWAYS in allowed directories, for ANY project.
+$profilePath = $PROFILE.CurrentUserAllHosts
+$aliasBlock = @"
+
+# --- Copilot Project Memory: auto-grant memory path access ---
+function Invoke-CopilotWithMemory {
+    `$memDir = Join-Path `$HOME ".copilot" "project-memory"
+    gh copilot -- --add-dir `$memDir @args
+}
+Set-Alias -Name ghc -Value Invoke-CopilotWithMemory -Scope Global
+# --- End Copilot Project Memory ---
+"@
+
+try {
+    if (-not (Test-Path $profilePath)) {
+        New-Item -Path $profilePath -ItemType File -Force | Out-Null
     }
+    $profileContent = Get-Content -Path $profilePath -Raw -ErrorAction SilentlyContinue
+    if ($profileContent -and $profileContent -match "Copilot Project Memory") {
+        Write-Host "    ⏭️  Shell alias already installed" -ForegroundColor DarkGray
+    } else {
+        Add-Content -Path $profilePath -Value $aliasBlock -Encoding UTF8
+        Write-Host "    ✅ Added 'ghc' alias to PowerShell profile" -ForegroundColor Green
+        Write-Host "       Use 'ghc' instead of 'gh copilot' for auto-permissions" -ForegroundColor White
+    }
+} catch {
+    Write-Host "    ⚠️  Could not update profile — add manually:" -ForegroundColor Yellow
+    Write-Host "       function ghc { gh copilot -- --add-dir `"$memoryDir`" @args }" -ForegroundColor White
 }
 
-$permissionsFile = Join-Path $copilotDir "permissions-config.json"
-if (Test-Path $permissionsFile) {
-    try {
-        $perms = Get-Content $permissionsFile -Raw | ConvertFrom-Json
-        if (-not $perms.locations.PSObject.Properties[$memoryDir]) {
-            $perms.locations | Add-Member -NotePropertyName $memoryDir -NotePropertyValue @{
-                tool_approvals = @(
-                    @{ kind = "read" },
-                    @{ kind = "write" }
-                )
-            }
-            $perms | ConvertTo-Json -Depth 10 | Set-Content -Path $permissionsFile -Encoding UTF8
-            Write-Host "    ✅ Added read/write permissions for project-memory" -ForegroundColor Green
+# Also seed permissions-config.json for the current project (if run from a project dir)
+$permFile = Join-Path $copilotDir "permissions-config.json"
+try {
+    $cwd = (Get-Location).Path
+    # Skip if CWD is home or system dir
+    if ($cwd -ne $HOME -and $cwd -ne "C:\") {
+        $perms = @{ "locations" = @{} }
+        if (Test-Path $permFile) {
+            $perms = Get-Content $permFile -Raw | ConvertFrom-Json -AsHashtable
+            if (-not $perms.locations) { $perms.locations = @{} }
+        }
+        
+        # Find git root for locationKey
+        $gitRoot = (git rev-parse --show-toplevel 2>$null)
+        if ($gitRoot) {
+            $locationKey = [System.IO.Path]::GetFullPath($gitRoot)
         } else {
-            Write-Host "    ⏭️  Permissions already set" -ForegroundColor DarkGray
+            $locationKey = $cwd
         }
-    } catch {
-        Write-Host "    ⚠️  Could not update permissions (Copilot will ask on first use)" -ForegroundColor Yellow
-    }
-} else {
-    # Create permissions file
-    @{
-        locations = @{
-            $memoryDir = @{
-                tool_approvals = @(
-                    @{ kind = "read" },
-                    @{ kind = "write" }
+        
+        if (-not $perms.locations[$locationKey]) {
+            $perms.locations[$locationKey] = @{}
+        }
+        
+        $loc = $perms.locations[$locationKey]
+        $existingDirs = @()
+        if ($loc["allowed_directories"]) { $existingDirs = @($loc["allowed_directories"]) }
+        
+        if ($memoryDir -notin $existingDirs) {
+            $existingDirs += $memoryDir
+            $loc["allowed_directories"] = $existingDirs
+            if (-not $loc["tool_approvals"]) {
+                $loc["tool_approvals"] = @(
+                    @{ "kind" = "read" },
+                    @{ "kind" = "write" }
                 )
             }
+            $perms | ConvertTo-Json -Depth 10 | Set-Content -Path $permFile -Encoding UTF8
+            Write-Host "    ✅ Granted memory access for: $locationKey" -ForegroundColor Green
+        } else {
+            Write-Host "    ⏭️  Permissions already set for this project" -ForegroundColor DarkGray
         }
-    } | ConvertTo-Json -Depth 10 | Set-Content -Path $permissionsFile -Encoding UTF8
-    Write-Host "    ✅ Created permissions config" -ForegroundColor Green
+    }
+} catch {
+    Write-Host "    ⚠️  Could not update permissions-config.json" -ForegroundColor Yellow
 }
 
 Write-Host ""
-Write-Host "  Just open Copilot in any project folder — it will auto-detect" -ForegroundColor White
-Write-Host "  and start building memory. No permission prompts, ever." -ForegroundColor White
+Write-Host "  🎉 Installation complete!" -ForegroundColor Green
+Write-Host ""
+Write-Host "  Two ways to use Copilot with project memory:" -ForegroundColor White
+Write-Host "    1. Use 'ghc' (auto-grants memory access for any project)" -ForegroundColor White
+Write-Host "    2. Use 'gh copilot' (memory access pre-granted for current project)" -ForegroundColor White
+Write-Host ""
+Write-Host "  💡 Re-run this installer from any project folder to grant access." -ForegroundColor DarkGray
 Write-Host ""

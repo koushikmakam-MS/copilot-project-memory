@@ -132,10 +132,10 @@ You have access to a persistent project memory system stored at ~/.copilot/proje
 ### Auto-Save on Exit
 Before ending ANY session, silently save a session summary with: what was discussed, files changed, decisions made, learnings.
 
-### Commands
-- /memory status|prefs|rules|context|extensions|sessions|snippets|export|export-team|backup|restore|reset|stats
-- /remember <instruction> — Quick-add a rule
-- /forget <rule-id> — Remove a rule
+### Commands (all use : prefix)
+- :status|:prefs|:rules|:context|:extensions|:sessions|:snippets|:export|:backup|:restore|:reset|:stats|:tracking|:help
+- :remember <instruction> — Quick-add a rule
+- :forget <rule-id> — Remove a rule
 
 See full command reference at: https://github.com/koushikmakam-MS/copilot-project-memory
 
@@ -168,7 +168,120 @@ echo "  🎉 Installation complete!"
 echo ""
 echo "  Memory location:  $MEMORY_DIR"
 echo "  Instructions:     $INSTRUCTIONS_FILE"
+
+# --- Step 5: Set up auto-permissions ---
 echo ""
-echo "  Just open Copilot in any project folder — it will auto-detect"
-echo "  and start building memory. No further setup needed."
+echo "  [Bonus] Setting up auto-permissions..."
+
+# Approach 1: Add shell alias wrapping 'gh copilot' with --add-dir
+ALIAS_BLOCK='
+# --- Copilot Project Memory: auto-grant memory path access ---
+ghc() { gh copilot -- --add-dir "$HOME/.copilot/project-memory" "$@"; }
+# --- End Copilot Project Memory ---'
+
+add_shell_alias() {
+    local rcfile="$1"
+    if [ -f "$rcfile" ]; then
+        if grep -q "Copilot Project Memory" "$rcfile" 2>/dev/null; then
+            echo "    ⏭️  Shell alias already in $(basename "$rcfile")"
+        else
+            echo "$ALIAS_BLOCK" >> "$rcfile"
+            echo "    ✅ Added 'ghc' alias to $(basename "$rcfile")"
+        fi
+    fi
+}
+
+# Detect shell and add alias
+ALIAS_ADDED=false
+if [ -f "$HOME/.zshrc" ]; then
+    add_shell_alias "$HOME/.zshrc"
+    ALIAS_ADDED=true
+fi
+if [ -f "$HOME/.bashrc" ]; then
+    add_shell_alias "$HOME/.bashrc"
+    ALIAS_ADDED=true
+fi
+if [ -f "$HOME/.bash_profile" ] && [ ! -f "$HOME/.bashrc" ]; then
+    add_shell_alias "$HOME/.bash_profile"
+    ALIAS_ADDED=true
+fi
+if [ "$ALIAS_ADDED" = "false" ]; then
+    # Create .bashrc if nothing exists
+    echo "$ALIAS_BLOCK" >> "$HOME/.bashrc"
+    echo "    ✅ Created ~/.bashrc with 'ghc' alias"
+fi
+echo "       Use 'ghc' instead of 'gh copilot' for auto-permissions"
+
+# Approach 2: Seed permissions-config.json for the current project
+PERM_FILE="$COPILOT_DIR/permissions-config.json"
+CWD="$(pwd)"
+if [ "$CWD" != "$HOME" ] && [ "$CWD" != "/" ]; then
+    # Find git root for locationKey
+    GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || echo "")"
+    if [ -n "$GIT_ROOT" ]; then
+        LOCATION_KEY="$(cd "$GIT_ROOT" && pwd)"
+    else
+        LOCATION_KEY="$CWD"
+    fi
+    
+    if command -v python3 &>/dev/null; then
+        python3 -c "
+import json, os
+pf = '$PERM_FILE'
+perms = {'locations': {}}
+if os.path.exists(pf):
+    with open(pf) as f:
+        perms = json.load(f)
+if 'locations' not in perms:
+    perms['locations'] = {}
+lk = '$LOCATION_KEY'
+mp = '$MEMORY_DIR'
+if lk not in perms['locations']:
+    perms['locations'][lk] = {}
+loc = perms['locations'][lk]
+dirs = loc.get('allowed_directories', [])
+if mp not in dirs:
+    dirs.append(mp)
+    loc['allowed_directories'] = dirs
+    if 'tool_approvals' not in loc:
+        loc['tool_approvals'] = [{'kind': 'read'}, {'kind': 'write'}]
+    with open(pf, 'w') as f:
+        json.dump(perms, f, indent=2)
+    print('    ✅ Granted memory access for: ' + lk)
+else:
+    print('    ⏭️  Permissions already set')
+" 2>/dev/null || echo "    ⚠️  Could not update permissions"
+    elif command -v node &>/dev/null; then
+        node -e "
+const fs = require('fs');
+const pf = '$PERM_FILE';
+let perms = {locations: {}};
+try { perms = JSON.parse(fs.readFileSync(pf, 'utf8')); } catch {}
+if (!perms.locations) perms.locations = {};
+const lk = '$LOCATION_KEY';
+const mp = '$MEMORY_DIR';
+if (!perms.locations[lk]) perms.locations[lk] = {};
+const loc = perms.locations[lk];
+const dirs = loc.allowed_directories || [];
+if (!dirs.includes(mp)) {
+    dirs.push(mp);
+    loc.allowed_directories = dirs;
+    if (!loc.tool_approvals) loc.tool_approvals = [{kind:'read'},{kind:'write'}];
+    fs.writeFileSync(pf, JSON.stringify(perms, null, 2));
+    console.log('    ✅ Granted memory access for: ' + lk);
+} else {
+    console.log('    ⏭️  Permissions already set');
+}
+" 2>/dev/null || echo "    ⚠️  Could not update permissions"
+    fi
+fi
+
+echo ""
+echo "  🎉 Installation complete!"
+echo ""
+echo "  Two ways to use Copilot with project memory:"
+echo "    1. Use 'ghc' (auto-grants memory access for any project)"
+echo "    2. Use 'gh copilot' (memory access pre-granted for current project)"
+echo ""
+echo "  💡 Re-run this installer from any project folder to grant access."
 echo ""
