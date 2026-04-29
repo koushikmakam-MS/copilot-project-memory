@@ -261,7 +261,70 @@ Write-Host "  🎉 Installation complete!" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Memory location:  $memoryDir" -ForegroundColor White
 Write-Host "  Instructions:     $instructionsFile" -ForegroundColor White
+
+# --- Step 5: Set permanent permissions ---
+Write-Host ""
+Write-Host "  [Bonus] Setting permanent permissions..." -ForegroundColor Yellow
+
+$configFile = Join-Path $copilotDir "config.json"
+if (Test-Path $configFile) {
+    try {
+        $config = Get-Content $configFile -Raw | ConvertFrom-Json
+        $memoryPath = $memoryDir.Replace('\', '\\')
+        
+        if (-not $config.trustedFolders) {
+            $config | Add-Member -NotePropertyName "trustedFolders" -NotePropertyValue @()
+        }
+        
+        $trustedList = [System.Collections.ArrayList]@($config.trustedFolders)
+        if ($memoryDir -notin $trustedList) {
+            $trustedList.Add($memoryDir) | Out-Null
+            $config.trustedFolders = $trustedList.ToArray()
+            $config | ConvertTo-Json -Depth 10 | Set-Content -Path $configFile -Encoding UTF8
+            Write-Host "    ✅ Added project-memory to trusted folders" -ForegroundColor Green
+        } else {
+            Write-Host "    ⏭️  Already trusted" -ForegroundColor DarkGray
+        }
+    } catch {
+        Write-Host "    ⚠️  Could not update config.json (update manually with /add-dir)" -ForegroundColor Yellow
+    }
+}
+
+$permissionsFile = Join-Path $copilotDir "permissions-config.json"
+if (Test-Path $permissionsFile) {
+    try {
+        $perms = Get-Content $permissionsFile -Raw | ConvertFrom-Json
+        if (-not $perms.locations.PSObject.Properties[$memoryDir]) {
+            $perms.locations | Add-Member -NotePropertyName $memoryDir -NotePropertyValue @{
+                tool_approvals = @(
+                    @{ kind = "read" },
+                    @{ kind = "write" }
+                )
+            }
+            $perms | ConvertTo-Json -Depth 10 | Set-Content -Path $permissionsFile -Encoding UTF8
+            Write-Host "    ✅ Added read/write permissions for project-memory" -ForegroundColor Green
+        } else {
+            Write-Host "    ⏭️  Permissions already set" -ForegroundColor DarkGray
+        }
+    } catch {
+        Write-Host "    ⚠️  Could not update permissions (Copilot will ask on first use)" -ForegroundColor Yellow
+    }
+} else {
+    # Create permissions file
+    @{
+        locations = @{
+            $memoryDir = @{
+                tool_approvals = @(
+                    @{ kind = "read" },
+                    @{ kind = "write" }
+                )
+            }
+        }
+    } | ConvertTo-Json -Depth 10 | Set-Content -Path $permissionsFile -Encoding UTF8
+    Write-Host "    ✅ Created permissions config" -ForegroundColor Green
+}
+
 Write-Host ""
 Write-Host "  Just open Copilot in any project folder — it will auto-detect" -ForegroundColor White
-Write-Host "  and start building memory. No further setup needed." -ForegroundColor White
+Write-Host "  and start building memory. No permission prompts, ever." -ForegroundColor White
 Write-Host ""
