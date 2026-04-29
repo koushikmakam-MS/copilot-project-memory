@@ -69,7 +69,7 @@ This gives you a long-term memory for each project folder — preferences, rules
 - Tell the user:
   ```
   📂 New project detected! Auto-detected: [stack items]
-  I'll start learning your preferences as we work. Say @memory remember to teach me rules.
+  I'll start learning your preferences as we work. Say @remember to teach me rules.
   ```
 
 ---
@@ -221,7 +221,7 @@ Beyond preferences, you should **silently observe** these patterns throughout ev
 #### tracking.yml Format
 ```yaml
 # Auto-tracked patterns — updated by Copilot, reviewed by user
-# Use @memory tracking to view, @memory tracking reset to clear
+# Use @tracking to view, @tracking reset to clear
 
 hotspots:
   - file: src/auth/middleware.ts
@@ -293,36 +293,40 @@ stats:
 #### Tracking Commands
 | User Types | What To Do |
 |-----------|------------|
-| `@memory tracking` | Show all auto-tracked patterns |
-| `@memory tracking reset` | Clear all tracked patterns |
-| `@memory tracking promote <category>` | Convert a tracked pattern into a permanent preference/rule |
+| `@tracking` | Show all auto-tracked patterns |
+| `@tracking reset` | Clear all tracked patterns |
+| `@tracking promote <category>` | Convert a tracked pattern into a permanent preference/rule |
 
 ---
 
-### Command Prefix: `@memory`
+### Command Prefix: `@`
 
-**All memory commands use the `@memory` prefix** to avoid accidental triggers.
+**All memory commands use the `@` prefix** to avoid accidental triggers.
 This ensures Copilot only acts on memory operations when the user explicitly intends it.
 
 The user types these as **regular chat messages** (not slash commands):
-- `@memory status` — show memory overview
-- `@memory remember always use TypeScript` — save a rule
-- `@memory forget rule-id` — remove a rule
+- `@status` — show memory overview
+- `@remember always use TypeScript` — save a rule
+- `@forget rule-id` — remove a rule
+- `@rules` — list do's and don'ts
+- `@prefs` — list preferences
+- `@context` — show project context
+- `@export team` — export for teammates
 
 **Recognition rules:**
-1. ONLY trigger memory operations when the message starts with `@memory`
-2. Without the prefix, treat "remember", "forget", etc. as normal conversation
-3. The prefix is case-insensitive: `@memory`, `@Memory`, `@MEMORY` all work
-4. Allow natural variations after the prefix: `@memory show my rules` = `@memory rules`
+1. ONLY trigger memory operations when the message starts with a recognized `@command`
+2. Recognized commands: `@status`, `@remember`, `@forget`, `@rules`, `@prefs`, `@context`, `@extensions`, `@sessions`, `@snippets`, `@export`, `@backup`, `@restore`, `@reset`, `@stats`, `@tracking`
+3. Without the `@` prefix, treat "remember", "forget", "rules", etc. as normal conversation
+4. The prefix is case-insensitive: `@Status`, `@REMEMBER`, `@Rules` all work
+5. If the message doesn't start with a recognized `@command`, do NOT trigger any memory operation
 
 ---
 
-### When User Says "@memory remember" or "@memory remember this"
+### When User Says "@remember"
 
-Recognize these patterns (case-insensitive, must start with `@memory`):
-- "@memory remember ..." / "@memory remember this: ..."
-- "@memory save this as a rule" / "@memory add a rule"
-- "@memory from now on ..."
+Recognize these patterns (must start with `@remember`):
+- "@remember ..." / "@remember this: ..."
+- "@remember from now on ..."
 
 1. Parse the instruction from the message.
 2. Determine the rule type:
@@ -339,9 +343,9 @@ Recognize these patterns (case-insensitive, must start with `@memory`):
    ```
 5. Confirm: `✅ Remembered as a [do/don't]: "[description]"`
 
-### When User Says "@memory forget" or "@memory remove rule"
+### When User Says "@forget"
 
-Recognize (must start with `@memory`): "@memory forget ...", "@memory remove rule ...", "@memory delete rule ..."
+Recognize (must start with `@forget`): "@forget ..."
 
 1. Parse the rule ID or description from the message.
 2. Remove the matching rule from `rules.yml`.
@@ -359,59 +363,59 @@ If you notice the user correcting the same pattern multiple times in a session:
 
 ### Command Reference
 
-**All commands start with `@memory`.** Without this prefix, nothing triggers — no accidental commands.
+**All commands start with `@`.** Without this prefix, nothing triggers — no accidental commands.
 
 #### Core Commands
 | User Types | What To Do |
 |-----------|------------|
-| `@memory status` / `@memory show status` | Overview: preference count, rule count, extension count, session count, last accessed |
-| `@memory prefs` / `@memory show preferences` | List all preferences |
-| `@memory prefs set <key> <value>` | Set a preference |
-| `@memory prefs remove <key>` | Remove a preference |
-| `@memory rules` / `@memory show rules` | List all rules (do's and don'ts) |
-| `@memory add do rule: <description>` | Add a "do" rule |
-| `@memory add dont rule: <description>` | Add a "don't" rule |
-| `@memory remove rule <id>` | Remove a rule by ID |
-| `@memory context` / `@memory show context` | Show project context |
-| `@memory set context <field> <value>` | Set a context field (name, description, notes) |
-| `@memory add <item> to stack` | Add an item to the tech stack |
-| `@memory mark <path> as key file` | Mark a file as a key file |
-| `@memory extensions` / `@memory show extensions` | List saved IDE extensions |
-| `@memory add extension <id> <name>` | Save an IDE extension |
-| `@memory remove extension <id>` | Remove an extension |
-| `@memory sessions` / `@memory show sessions` | List saved sessions |
-| `@memory last session` | Show last session details |
-| `@memory remember <instruction>` | Quick-add a rule (auto-detects do/don't) |
-| `@memory forget <rule-id>` | Remove a rule |
+| `@status` / `@status` | Overview: preference count, rule count, extension count, session count, last accessed |
+| `@prefs` / `@prefs` | List all preferences |
+| `@prefs set <key> <value>` | Set a preference |
+| `@prefs remove <key>` | Remove a preference |
+| `@rules` / `@rules` | List all rules (do's and don'ts) |
+| `@rules add do rule: <description>` | Add a "do" rule |
+| `@rules add dont rule: <description>` | Add a "don't" rule |
+| `@rules remove <id>` | Remove a rule by ID |
+| `@context` / `@context` | Show project context |
+| `@context set <field> <value>` | Set a context field (name, description, notes) |
+| `@context stack <item>` | Add an item to the tech stack |
+| `@context keyfile <path>` | Mark a file as a key file |
+| `@extensions` / `@extensions` | List saved IDE extensions |
+| `@extensions add <id> <name>` | Save an IDE extension |
+| `@extensions remove <id>` | Remove an extension |
+| `@sessions` / `@sessions` | List saved sessions |
+| `@sessions last` | Show last session details |
+| `@remember <instruction>` | Quick-add a rule (auto-detects do/don't) |
+| `@forget <rule-id>` | Remove a rule |
 
 #### Snippet Library
 | User Types | What To Do |
 |-----------|------------|
-| `@memory snippets` / `@memory list snippets` | List all snippets for this project |
-| `@memory save snippet <name>` | Save the last code block as a named snippet |
-| `@memory get snippet <name>` | Retrieve and display a snippet |
-| `@memory delete snippet <name>` | Delete a snippet |
+| `@snippets` / `@snippets list` | List all snippets for this project |
+| `@snippets save <name>` | Save the last code block as a named snippet |
+| `@snippets get <name>` | Retrieve and display a snippet |
+| `@snippets delete <name>` | Delete a snippet |
 
 Snippets are stored as markdown files in `<project>/snippets/<name>.md`. Each contains a description and code block.
 
 #### Team Sharing
 | User Types | What To Do |
 |-----------|------------|
-| `@memory export team` / `@memory generate team instructions` | Generate `.github/copilot-instructions.md` from project memory |
+| `@export team` / `@export generate team instructions` | Generate `.github/copilot-instructions.md` from project memory |
 
 This exports project context, rules, and preferences (NOT personal session history) into a file the whole team can use. It creates a clean, readable `.github/copilot-instructions.md` in the current project.
 
 #### Multi-Editor Export
 | User Types | What To Do |
 |-----------|------------|
-| `@memory export editors` | Generate instruction files for ALL supported editors |
-| `@memory export editors vscode` | Generate for VS Code only |
-| `@memory export editors jetbrains` | Generate for JetBrains only |
-| `@memory export editors neovim` | Generate for Neovim only |
+| `@export editors` | Generate instruction files for ALL supported editors |
+| `@export editors vscode` | Generate for VS Code only |
+| `@export editors jetbrains` | Generate for JetBrains only |
+| `@export editors neovim` | Generate for Neovim only |
 
 This reads the project memory and generates **editor-specific instruction files** so your memory works everywhere Copilot runs.
 
-**Files generated by `@memory export editors`:**
+**Files generated by `@export editors`:**
 
 | Editor | File Generated | What It Contains |
 |--------|---------------|-----------------|
@@ -450,8 +454,8 @@ This reads the project memory and generates **editor-specific instruction files*
 #### Backup & Restore
 | User Types | What To Do |
 |-----------|------------|
-| `@memory backup` | Create a backup archive of all project memory |
-| `@memory restore <path>` | Restore memory from a backup archive |
+| `@backup` | Create a backup archive of all project memory |
+| `@restore <path>` | Restore memory from a backup archive |
 
 - On Windows: creates a `.zip` file
 - On macOS/Linux: creates a `.tar.gz` file
@@ -460,10 +464,10 @@ This reads the project memory and generates **editor-specific instruction files*
 #### Memory Management
 | User Types | What To Do |
 |-----------|------------|
-| `@memory reset` | Wipe current project's memory (asks for confirmation first!) |
-| `@memory reset --confirm` | Wipe without confirmation |
-| `@memory stats` | Show stats across ALL projects: total projects, total rules, total sessions, most active project |
-| `@memory export` | Export current project's full memory as a single markdown block |
+| `@reset` | Wipe current project's memory (asks for confirmation first!) |
+| `@reset --confirm` | Wipe without confirmation |
+| `@stats` | Show stats across ALL projects: total projects, total rules, total sessions, most active project |
+| `@export` | Export current project's full memory as a single markdown block |
 
 ---
 
@@ -483,6 +487,6 @@ Track the pattern, and when it reaches 2 occurrences, trigger the suggestion flo
 - **Global** (`_global/`): Rules and preferences that apply everywhere. Example: "I prefer concise answers", "Always use TypeScript strict mode."
 - **Project** (`<slug>/`): Rules and preferences for a specific project. Example: "Use pnpm in this project", "This project uses Tailwind."
 - When global and project have the same preference key or conflicting rules, **project ALWAYS wins**.
-- Users can set global rules with: `@memory add global do rule: <description>`
+- Users can set global rules with: `@rules add global do rule: <description>`
 
 <!-- END PROJECT MEMORY SKILL -->
