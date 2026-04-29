@@ -65,51 +65,51 @@ curl -fsSL https://raw.githubusercontent.com/koushikmakam-MS/copilot-project-mem
 
 ### Commands
 
-All commands use the **`@` prefix** to avoid accidental triggers. Type them as regular chat messages.
+All commands use the **`:` prefix** to avoid accidental triggers. Type them as regular chat messages.
 
 #### Quick Commands
 ```
-@remember Always use Zod for API validation     → ✅ Saved as a "do" rule
-@remember Never use default exports              → ✅ Saved as a "don't" rule
-@forget never-use-default-exports                → ✅ Rule removed
+:remember Always use Zod for API validation     → ✅ Saved as a "do" rule
+:remember Never use default exports              → ✅ Saved as a "don't" rule
+:forget never-use-default-exports                → ✅ Rule removed
 ```
 
 #### Memory Management
 ```
-@status          — Overview of this project's memory
-@prefs           — List preferences
-@prefs set language typescript
-@rules           — List all do's and don'ts
-@rules add do: Use Zod for validation
-@rules add dont: Never use any type
-@context         — Show project context
-@context stack next.js
-@extensions add dbaeumer.vscode-eslint ESLint
-@stats           — Stats across ALL projects
+:status          — Overview of this project's memory
+:prefs           — List preferences
+:prefs set language typescript
+:rules           — List all do's and don'ts
+:rules add do: Use Zod for validation
+:rules add dont: Never use any type
+:context         — Show project context
+:context stack next.js
+:extensions add dbaeumer.vscode-eslint ESLint
+:stats           — Stats across ALL projects
 ```
 
 #### Snippets
 ```
-@snippets save api-handler    — Save last code block as snippet
-@snippets get api-handler     — Retrieve a snippet
-@snippets list               — List all snippets
+:snippets save api-handler    — Save last code block as snippet
+:snippets get api-handler     — Retrieve a snippet
+:snippets list               — List all snippets
 ```
 
 #### Team Sharing & Multi-Editor
 ```
-@export team     — Generate .github/copilot-instructions.md for your team
-@export editors  — Generate instruction files for VS Code, JetBrains, Neovim, Claude Code, Cursor
+:export team     — Generate .github/copilot-instructions.md for your team
+:export editors  — Generate instruction files for VS Code, JetBrains, Neovim, Claude Code, Cursor
 ```
 
 #### Backup & Restore
 ```
-@backup          — Archive all memory to a file
-@restore <path>  — Restore from backup
+:backup          — Archive all memory to a file
+:restore <path>  — Restore from backup
 ```
 
 #### Reset
 ```
-@reset           — Wipe this project's memory (asks confirmation)
+:reset           — Wipe this project's memory (asks confirmation)
 ```
 
 ---
@@ -140,8 +140,8 @@ All commands use the **`@` prefix** to avoid accidental triggers. Type them as r
 
 Some rules should apply everywhere:
 ```
-@rules add global do: I prefer concise answers
-@rules add global dont: Never include unnecessary comments
+:rules add global do: I prefer concise answers
+:rules add global dont: Never include unnecessary comments
 ```
 
 These live in `_global/rules.yml` and are loaded for every project.
@@ -178,7 +178,7 @@ A: No. It's just files + a prompt. No build step, no dependencies.
 A: Run `/memory export-team` to generate a `.github/copilot-instructions.md` that works for everyone — no install needed on their end.
 
 **Q: How do I move to a new machine?**
-A: Either run the installer again, or use `@backup` + `@restore`.
+A: Either run the installer again, or use `:backup` + `:restore`.
 
 **Q: What if global and project rules conflict?**
 A: Project rules always win.

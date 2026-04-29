@@ -44,8 +44,8 @@ This gives you a long-term memory for each project folder — preferences, rules
 ```
 🧠 Project Memory Active
 ━━━━━━━━━━━━━━━━━━━━━━━━
-Quick commands:  @status · @remember · @forget · @rules · @prefs
-Full list:       @help
+Quick commands:  :status · :remember · :forget · :rules · :prefs
+Full list:       :help
 ```
 
 **If memory exists:**
@@ -82,33 +82,33 @@ Full list:       @help
 - Show after the banner:
   ```
   📂 New project detected! Auto-detected: [stack items]
-  └─ I'll learn your preferences as we go. Say @remember to teach me rules.
+  └─ I'll learn your preferences as we go. Say :remember to teach me rules.
   ```
 
-### @help Command
+### :help Command
 
-When the user types `@help`, show a quick reference:
+When the user types `:help`, show a quick reference:
 ```
 🧠 Project Memory — Quick Reference
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  @status              Show memory overview
-  @remember <rule>     Save a do/don't rule
-  @forget <rule-id>    Remove a rule
-  @rules               List all rules
-  @prefs               List preferences
-  @prefs set <k> <v>   Set a preference
-  @context             Show project context
-  @extensions          List IDE extensions
-  @sessions            List past sessions
-  @snippets            Manage code snippets
-  @export team         Export for teammates
-  @export editors      Export for all editors
-  @backup / @restore   Backup & restore
-  @stats               Cross-project stats
-  @tracking            View tracked patterns
-  @reset               Wipe project memory
-  @help                Show this reference
+  :status              Show memory overview
+  :remember <rule>     Save a do/don't rule
+  :forget <rule-id>    Remove a rule
+  :rules               List all rules
+  :prefs               List preferences
+  :prefs set <k> <v>   Set a preference
+  :context             Show project context
+  :extensions          List IDE extensions
+  :sessions            List past sessions
+  :snippets            Manage code snippets
+  :export team         Export for teammates
+  :export editors      Export for all editors
+  :backup / :restore   Backup & restore
+  :stats               Cross-project stats
+  :tracking            View tracked patterns
+  :reset               Wipe project memory
+  :help                Show this reference
 ```
 
 ---
@@ -260,7 +260,7 @@ Beyond preferences, you should **silently observe** these patterns throughout ev
 #### tracking.yml Format
 ```yaml
 # Auto-tracked patterns — updated by Copilot, reviewed by user
-# Use @tracking to view, @tracking reset to clear
+# Use :tracking to view, :tracking reset to clear
 
 hotspots:
   - file: src/auth/middleware.ts
@@ -332,40 +332,40 @@ stats:
 #### Tracking Commands
 | User Types | What To Do |
 |-----------|------------|
-| `@tracking` | Show all auto-tracked patterns |
-| `@tracking reset` | Clear all tracked patterns |
-| `@tracking promote <category>` | Convert a tracked pattern into a permanent preference/rule |
+| `:tracking` | Show all auto-tracked patterns |
+| `:tracking reset` | Clear all tracked patterns |
+| `:tracking promote <category>` | Convert a tracked pattern into a permanent preference/rule |
 
 ---
 
-### Command Prefix: `@`
+### Command Prefix: `:`
 
-**All memory commands use the `@` prefix** to avoid accidental triggers.
+**All memory commands use the `:` prefix** to avoid accidental triggers.
 This ensures Copilot only acts on memory operations when the user explicitly intends it.
 
 The user types these as **regular chat messages** (not slash commands):
-- `@status` — show memory overview
-- `@remember always use TypeScript` — save a rule
-- `@forget rule-id` — remove a rule
-- `@rules` — list do's and don'ts
-- `@prefs` — list preferences
-- `@context` — show project context
-- `@export team` — export for teammates
+- `:status` — show memory overview
+- `:remember always use TypeScript` — save a rule
+- `:forget rule-id` — remove a rule
+- `:rules` — list do's and don'ts
+- `:prefs` — list preferences
+- `:context` — show project context
+- `:export team` — export for teammates
 
 **Recognition rules:**
-1. ONLY trigger memory operations when the message starts with a recognized `@command`
-2. Recognized commands: `@status`, `@remember`, `@forget`, `@rules`, `@prefs`, `@context`, `@extensions`, `@sessions`, `@snippets`, `@export`, `@backup`, `@restore`, `@reset`, `@stats`, `@tracking`
-3. Without the `@` prefix, treat "remember", "forget", "rules", etc. as normal conversation
-4. The prefix is case-insensitive: `@Status`, `@REMEMBER`, `@Rules` all work
-5. If the message doesn't start with a recognized `@command`, do NOT trigger any memory operation
+1. ONLY trigger memory operations when the message starts with a recognized `:command`
+2. Recognized commands: `:status`, `:remember`, `:forget`, `:rules`, `:prefs`, `:context`, `:extensions`, `:sessions`, `:snippets`, `:export`, `:backup`, `:restore`, `:reset`, `:stats`, `:tracking`
+3. Without the `:` prefix, treat "remember", "forget", "rules", etc. as normal conversation
+4. The prefix is case-insensitive: `:Status`, `:REMEMBER`, `:Rules` all work
+5. If the message doesn't start with a recognized `:command`, do NOT trigger any memory operation
 
 ---
 
-### When User Says "@remember"
+### When User Says ":remember"
 
-Recognize these patterns (must start with `@remember`):
-- "@remember ..." / "@remember this: ..."
-- "@remember from now on ..."
+Recognize these patterns (must start with `:remember`):
+- ":remember ..." / ":remember this: ..."
+- ":remember from now on ..."
 
 1. Parse the instruction from the message.
 2. Determine the rule type:
@@ -382,9 +382,9 @@ Recognize these patterns (must start with `@remember`):
    ```
 5. Confirm: `✅ Remembered as a [do/don't]: "[description]"`
 
-### When User Says "@forget"
+### When User Says ":forget"
 
-Recognize (must start with `@forget`): "@forget ..."
+Recognize (must start with `:forget`): ":forget ..."
 
 1. Parse the rule ID or description from the message.
 2. Remove the matching rule from `rules.yml`.
@@ -402,59 +402,59 @@ If you notice the user correcting the same pattern multiple times in a session:
 
 ### Command Reference
 
-**All commands start with `@`.** Without this prefix, nothing triggers — no accidental commands.
+**All commands start with `:`.** Without this prefix, nothing triggers — no accidental commands.
 
 #### Core Commands
 | User Types | What To Do |
 |-----------|------------|
-| `@status` / `@status` | Overview: preference count, rule count, extension count, session count, last accessed |
-| `@prefs` / `@prefs` | List all preferences |
-| `@prefs set <key> <value>` | Set a preference |
-| `@prefs remove <key>` | Remove a preference |
-| `@rules` / `@rules` | List all rules (do's and don'ts) |
-| `@rules add do rule: <description>` | Add a "do" rule |
-| `@rules add dont rule: <description>` | Add a "don't" rule |
-| `@rules remove <id>` | Remove a rule by ID |
-| `@context` / `@context` | Show project context |
-| `@context set <field> <value>` | Set a context field (name, description, notes) |
-| `@context stack <item>` | Add an item to the tech stack |
-| `@context keyfile <path>` | Mark a file as a key file |
-| `@extensions` / `@extensions` | List saved IDE extensions |
-| `@extensions add <id> <name>` | Save an IDE extension |
-| `@extensions remove <id>` | Remove an extension |
-| `@sessions` / `@sessions` | List saved sessions |
-| `@sessions last` | Show last session details |
-| `@remember <instruction>` | Quick-add a rule (auto-detects do/don't) |
-| `@forget <rule-id>` | Remove a rule |
+| `:status` / `:status` | Overview: preference count, rule count, extension count, session count, last accessed |
+| `:prefs` / `:prefs` | List all preferences |
+| `:prefs set <key> <value>` | Set a preference |
+| `:prefs remove <key>` | Remove a preference |
+| `:rules` / `:rules` | List all rules (do's and don'ts) |
+| `:rules add do rule: <description>` | Add a "do" rule |
+| `:rules add dont rule: <description>` | Add a "don't" rule |
+| `:rules remove <id>` | Remove a rule by ID |
+| `:context` / `:context` | Show project context |
+| `:context set <field> <value>` | Set a context field (name, description, notes) |
+| `:context stack <item>` | Add an item to the tech stack |
+| `:context keyfile <path>` | Mark a file as a key file |
+| `:extensions` / `:extensions` | List saved IDE extensions |
+| `:extensions add <id> <name>` | Save an IDE extension |
+| `:extensions remove <id>` | Remove an extension |
+| `:sessions` / `:sessions` | List saved sessions |
+| `:sessions last` | Show last session details |
+| `:remember <instruction>` | Quick-add a rule (auto-detects do/don't) |
+| `:forget <rule-id>` | Remove a rule |
 
 #### Snippet Library
 | User Types | What To Do |
 |-----------|------------|
-| `@snippets` / `@snippets list` | List all snippets for this project |
-| `@snippets save <name>` | Save the last code block as a named snippet |
-| `@snippets get <name>` | Retrieve and display a snippet |
-| `@snippets delete <name>` | Delete a snippet |
+| `:snippets` / `:snippets list` | List all snippets for this project |
+| `:snippets save <name>` | Save the last code block as a named snippet |
+| `:snippets get <name>` | Retrieve and display a snippet |
+| `:snippets delete <name>` | Delete a snippet |
 
 Snippets are stored as markdown files in `<project>/snippets/<name>.md`. Each contains a description and code block.
 
 #### Team Sharing
 | User Types | What To Do |
 |-----------|------------|
-| `@export team` / `@export generate team instructions` | Generate `.github/copilot-instructions.md` from project memory |
+| `:export team` / `:export generate team instructions` | Generate `.github/copilot-instructions.md` from project memory |
 
 This exports project context, rules, and preferences (NOT personal session history) into a file the whole team can use. It creates a clean, readable `.github/copilot-instructions.md` in the current project.
 
 #### Multi-Editor Export
 | User Types | What To Do |
 |-----------|------------|
-| `@export editors` | Generate instruction files for ALL supported editors |
-| `@export editors vscode` | Generate for VS Code only |
-| `@export editors jetbrains` | Generate for JetBrains only |
-| `@export editors neovim` | Generate for Neovim only |
+| `:export editors` | Generate instruction files for ALL supported editors |
+| `:export editors vscode` | Generate for VS Code only |
+| `:export editors jetbrains` | Generate for JetBrains only |
+| `:export editors neovim` | Generate for Neovim only |
 
 This reads the project memory and generates **editor-specific instruction files** so your memory works everywhere Copilot runs.
 
-**Files generated by `@export editors`:**
+**Files generated by `:export editors`:**
 
 | Editor | File Generated | What It Contains |
 |--------|---------------|-----------------|
@@ -493,8 +493,8 @@ This reads the project memory and generates **editor-specific instruction files*
 #### Backup & Restore
 | User Types | What To Do |
 |-----------|------------|
-| `@backup` | Create a backup archive of all project memory |
-| `@restore <path>` | Restore memory from a backup archive |
+| `:backup` | Create a backup archive of all project memory |
+| `:restore <path>` | Restore memory from a backup archive |
 
 - On Windows: creates a `.zip` file
 - On macOS/Linux: creates a `.tar.gz` file
@@ -503,10 +503,10 @@ This reads the project memory and generates **editor-specific instruction files*
 #### Memory Management
 | User Types | What To Do |
 |-----------|------------|
-| `@reset` | Wipe current project's memory (asks for confirmation first!) |
-| `@reset --confirm` | Wipe without confirmation |
-| `@stats` | Show stats across ALL projects: total projects, total rules, total sessions, most active project |
-| `@export` | Export current project's full memory as a single markdown block |
+| `:reset` | Wipe current project's memory (asks for confirmation first!) |
+| `:reset --confirm` | Wipe without confirmation |
+| `:stats` | Show stats across ALL projects: total projects, total rules, total sessions, most active project |
+| `:export` | Export current project's full memory as a single markdown block |
 
 ---
 
@@ -526,6 +526,6 @@ Track the pattern, and when it reaches 2 occurrences, trigger the suggestion flo
 - **Global** (`_global/`): Rules and preferences that apply everywhere. Example: "I prefer concise answers", "Always use TypeScript strict mode."
 - **Project** (`<slug>/`): Rules and preferences for a specific project. Example: "Use pnpm in this project", "This project uses Tailwind."
 - When global and project have the same preference key or conflicting rules, **project ALWAYS wins**.
-- Users can set global rules with: `@rules add global do rule: <description>`
+- Users can set global rules with: `:rules add global do rule: <description>`
 
 <!-- END PROJECT MEMORY SKILL -->
