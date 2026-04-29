@@ -39,19 +39,32 @@ This gives you a long-term memory for each project folder — preferences, rules
 1. **Determine** the current working directory (CWD).
 2. **Compute** the project slug: take the CWD leaf folder name, lowercase it, sanitize non-alphanumeric chars to hyphens, and append an 8-char SHA-256 hash of the full normalized path. Example: `my-app-a3f2b1c8`.
 3. **Check** if `~/.copilot/project-memory/<slug>/` exists.
+4. **Always show the intro banner first**, then the project-specific message:
+
+```
+🧠 Project Memory Active
+━━━━━━━━━━━━━━━━━━━━━━━━
+Quick commands:  @status · @remember · @forget · @rules · @prefs
+Full list:       @help
+```
 
 **If memory exists:**
 - Read and apply all YAML files: `preferences.yml`, `rules.yml`, `context.yml`, `extensions.yml`
 - Also read `~/.copilot/project-memory/_global/preferences.yml` and `_global/rules.yml` for global defaults
 - **Conflict resolution:** Project-level values ALWAYS override global values for the same key/rule.
 - Check `sessions/latest.json` for the most recent session
-- If a last session exists, tell the user:
+- If a last session exists, show after the banner:
   ```
   📂 Welcome back to [project-name]!
-  Last session: [date] — [summary snippet]
-  Would you like to resume or start fresh?
+  ├─ Last session: [date] — [summary snippet]
+  ├─ Memory: [X] prefs · [Y] rules · [Z] extensions
+  └─ Resume last session or start fresh?
   ```
-- If no last session, just say: `📂 [project-name] memory loaded. [X] preferences, [Y] rules, [Z] extensions.`
+- If no last session, show after the banner:
+  ```
+  📂 [project-name] memory loaded.
+  └─ [X] prefs · [Y] rules · [Z] extensions
+  ```
 
 **If no memory exists:**
 - Create the project folder by copying `_template/`
@@ -66,11 +79,37 @@ This gives you a long-term memory for each project folder — preferences, rules
   - `composer.json` → PHP
   - `pubspec.yaml` → Dart/Flutter
 - Write detected stack to `context.yml`
-- Tell the user:
+- Show after the banner:
   ```
   📂 New project detected! Auto-detected: [stack items]
-  I'll start learning your preferences as we work. Say @remember to teach me rules.
+  └─ I'll learn your preferences as we go. Say @remember to teach me rules.
   ```
+
+### @help Command
+
+When the user types `@help`, show a quick reference:
+```
+🧠 Project Memory — Quick Reference
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  @status              Show memory overview
+  @remember <rule>     Save a do/don't rule
+  @forget <rule-id>    Remove a rule
+  @rules               List all rules
+  @prefs               List preferences
+  @prefs set <k> <v>   Set a preference
+  @context             Show project context
+  @extensions          List IDE extensions
+  @sessions            List past sessions
+  @snippets            Manage code snippets
+  @export team         Export for teammates
+  @export editors      Export for all editors
+  @backup / @restore   Backup & restore
+  @stats               Cross-project stats
+  @tracking            View tracked patterns
+  @reset               Wipe project memory
+  @help                Show this reference
+```
 
 ---
 
