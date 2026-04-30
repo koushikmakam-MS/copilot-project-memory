@@ -76,6 +76,7 @@ When the user types `:help`, `:?`, or just `:`, show a quick reference:
   :remember <rule>     Save a do/don't rule
   :forget <rule-id>    Remove a rule
   :rules               List all rules
+  :rules touch <id>    Mark rule as still relevant
   :prefs               List preferences
   :prefs set <k> <v>   Set a preference
   :context             Show project context
@@ -86,14 +87,45 @@ When the user types `:help`, `:?`, or just `:`, show a quick reference:
   :session list        Show all named sessions
   :session notes       View/add session notes
   :snippets            Manage code snippets
-  :export team         Export for teammates
+  :export team         Share rules with your team
   :export editors      Export for all editors
+  :compact             Prune stale data, enforce caps
+  :verify              Check memory file integrity
   :backup / :restore   Backup & restore
   :stats               Cross-project stats
-  :tracking            View tracked patterns
+  :tracking            View auto-learned patterns
   :reset               Wipe project memory
   :help                Show this reference
 ```
+
+---
+
+### Contextual Loading (Performance & Reliability)
+
+**Not all memory files need to be loaded on every session.** This reduces token waste and hallucination risk.
+
+| Load Timing | Files | Why |
+|-------------|-------|-----|
+| **Always** (on `:status`, `:resume`, session start) | `preferences.yml`, `rules.yml`, `context.yml`, `sessions/latest.json` | Small, always relevant |
+| **On demand** (only when explicitly requested) | `tracking.yml` | Only for `:tracking` or `:tracking promote` |
+| **On demand** | Full session JSON files | Only for `:resume`, `:sessions last`, `:session load` |
+| **On demand** | `snippets/*.md` | Only for `:snippets get <name>` |
+| **On demand** | `extensions.yml` | Only for `:extensions` |
+
+**Rule:** Never load more than what the current command needs. If a user asks a coding question, don't preload tracking data or session history.
+
+---
+
+### Schema Versioning
+
+All YAML files MUST include a `schema_version` header for forward compatibility:
+
+```yaml
+schema_version: 1
+# ... rest of file
+```
+
+When reading a file, check `schema_version`. If missing, treat as version 1 and add it on next write.
 
 ---
 
@@ -126,6 +158,7 @@ When the user types `:help`, `:?`, or just `:`, show a quick reference:
    ```
 4. If any new preferences or rules were learned during the session, update the YAML files.
 5. **Do this silently** — no need to tell the user, just do it.
+6. **Enforce storage caps** after saving (see Storage Caps section).
 
 ### Named Sessions (Multiple Features)
 
@@ -376,7 +409,7 @@ The user types these as **regular chat messages** (not slash commands):
 
 **Recognition rules:**
 1. ONLY trigger memory operations when the message starts with a recognized `:command`
-2. Recognized commands: `:status`, `:resume`, `:remember`, `:forget`, `:rules`, `:prefs`, `:context`, `:extensions`, `:sessions`, `:session`, `:snippets`, `:export`, `:backup`, `:restore`, `:reset`, `:stats`, `:tracking`, `:help`, `:?`
+2. Recognized commands: `:status`, `:resume`, `:remember`, `:forget`, `:rules`, `:prefs`, `:context`, `:extensions`, `:sessions`, `:session`, `:snippets`, `:export`, `:backup`, `:restore`, `:reset`, `:stats`, `:tracking`, `:compact`, `:verify`, `:help`, `:?`
 3. Without the `:` prefix, treat "remember", "forget", "rules", etc. as normal conversation
 4. The prefix is case-insensitive: `:Status`, `:REMEMBER`, `:Rules` all work
 5. If the message doesn't start with a recognized `:command`, do NOT trigger any memory operation
@@ -400,6 +433,8 @@ The user types these as **regular chat messages** (not slash commands):
   :snippets     — Code snippet library
 
   :export team  — Share rules with your team
+  :compact      — Prune stale data & enforce storage caps
+  :verify       — Check memory file integrity
   :backup       — Backup all memory
   :stats        — Stats across all projects
   :tracking     — View auto-learned patterns
@@ -426,8 +461,13 @@ Recognize these patterns (must start with `:remember`):
      description: "<the instruction>"
      learned_from: "explicit instruction"
      created_at: "<ISO timestamp>"
+     last_used: "<ISO timestamp>"
+     use_count: 0
+     share: false
    ```
 5. Confirm: `✅ Remembered as a [do/don't]: "[description]"`
+6. Ask: `🌍 Should this rule be shared with teammates via :export team? (yes/no)`
+   - If yes, set `share: true`
 
 ### When User Says ":forget"
 
@@ -481,6 +521,10 @@ If you notice the user correcting the same pattern multiple times in a session:
 | `:session notes <text>` | Append a note to active session's notes.md |
 | `:remember <instruction>` | Quick-add a rule (auto-detects do/don't) |
 | `:forget <rule-id>` | Remove a rule |
+| `:rules touch <id>` | Mark a rule as still relevant (resets staleness) |
+| `:compact` | Enforce storage caps, prune stale derived data, suggest stale rules |
+| `:compact --aggressive` | Also archive old tracking entries and reset stats |
+| `:verify` | Check integrity of all memory files (non-destructive) |
 
 #### Snippet Library
 | User Types | What To Do |
@@ -495,9 +539,34 @@ Snippets are stored as markdown files in `<project>/snippets/<name>.md`. Each co
 #### Team Sharing
 | User Types | What To Do |
 |-----------|------------|
-| `:export team` / `:export generate team instructions` | Generate `.github/copilot-instructions.md` from project memory |
+| `:export team` | Generate `.github/copilot-instructions.md` from project memory |
+| `:export team --scope=rules,stack` | Export only specific categories |
+| `:export team --fresh=30d` | Only export items used/updated in last 30 days |
+| `:export team --max-size=4kb` | Cap export file size (truncate least important items) |
 
-This exports project context, rules, and preferences (NOT personal session history) into a file the whole team can use. It creates a clean, readable `.github/copilot-instructions.md` in the current project.
+This exports project context, rules, and preferences (NOT personal session history) into a file the whole team can use.
+
+**Export behavior:**
+1. **Only rules with `share: true` are included** by default. To include all rules, use `--all-rules`.
+2. **Deterministic export order** (highest priority first):
+   - Project context (name, description, stack, key files)
+   - Shared "don't" rules (guardrails)
+   - Shared "do" rules (conventions)
+   - Architecture patterns
+   - Testing conventions
+   - Security practices
+   - Preferred dependencies
+   - Git workflow
+3. If `--max-size` is set, stop adding items when the cap is reached.
+4. Each exported rule includes a comment with its `created_at` for staleness visibility.
+
+**What is NOT exported** (stays private in CLI memory):
+- Rules without `share: true` (unless `--all-rules`)
+- Session history
+- Interaction style preferences
+- Error pattern history
+- File hotspots
+- Session statistics
 
 #### Multi-Editor Export
 | User Types | What To Do |
@@ -530,20 +599,13 @@ This reads the project memory and generates **editor-specific instruction files*
 
 **The generated files include:**
 - Project context (name, description, stack, key files)
-- All "do" and "don't" rules
+- All shared "do" and "don't" rules (those with `share: true`)
 - Preferences (language, style, framework, etc.)
 - Preferred dependencies
 - Architecture patterns (where to put files, test location)
 - Testing conventions
 - Security practices
 - Git workflow conventions
-
-**What is NOT exported** (stays private in CLI memory):
-- Session history
-- Interaction style preferences
-- Error pattern history
-- File hotspots
-- Session statistics
 
 #### Backup & Restore
 | User Types | What To Do |
@@ -582,5 +644,106 @@ Track the pattern, and when it reaches 2 occurrences, trigger the suggestion flo
 - **Project** (`<slug>/`): Rules and preferences for a specific project. Example: "Use pnpm in this project", "This project uses Tailwind."
 - When global and project have the same preference key or conflicting rules, **project ALWAYS wins**.
 - Users can set global rules with: `:rules add global do rule: <description>`
+
+---
+
+### Storage Caps & Eviction Policy
+
+Memory files must not grow unbounded. Enforce these **hard caps**:
+
+| Data | Max Entries | Eviction Rule |
+|------|-------------|---------------|
+| `sessions/_default/` | 10 JSON files | Delete oldest by `endedAt` |
+| Named session entries | 20 JSON files per session | Delete oldest |
+| `tracking.yml` → `hotspots` | 5 entries | Keep highest `touch_count` |
+| `tracking.yml` → `common_errors` | 10 entries | Keep most recent |
+| `tracking.yml` → `review_patterns` | 10 entries | Keep most recent |
+| `rules.yml` | No hard cap | Never auto-delete explicit rules |
+| `preferences.yml` | No hard cap | User manages manually |
+
+**Important:** 
+- **NEVER auto-archive or delete explicit user rules** (those with `learned_from: "explicit instruction"`).
+- Only auto-compact **derived data** (tracking, default sessions).
+- Enforce caps silently during auto-save on exit.
+
+#### Staleness Metadata (Best-Effort)
+
+When a rule is actively applied during a session (i.e., it influenced code generation or a decision), update its metadata:
+
+```yaml
+- id: always-use-zod
+  type: do
+  description: "Always use Zod for validation"
+  created_at: "2026-04-01"
+  last_used: "2026-04-29"     # Last session where this rule was relevant
+  use_count: 7                # Times it was actively applied
+  share: true                 # Include in team export
+```
+
+This is **best-effort** — if you forget to update `last_used`, that's acceptable. It's used by `:compact` to suggest (not force) archiving stale items.
+
+---
+
+### :compact Command
+
+When the user types `:compact`:
+
+1. **Enforce storage caps** — delete sessions/tracking entries exceeding limits.
+2. **Report stale derived data** — show tracking entries not updated in 30+ days.
+3. **Suggest stale rules** (but never auto-delete):
+   ```
+   📊 Compact Results:
+   ✅ Pruned 3 old default sessions (kept latest 10)
+   ✅ Pruned 2 excess hotspot entries (kept top 5)
+   
+   💡 Possibly stale rules (not used in 30+ days):
+   - [use-prettier] last used: 2026-03-01 (60 days ago)
+   - [no-default-exports] last used: 2026-03-15 (46 days ago)
+   
+   Use :forget <id> to remove, or :rules touch <id> to mark as still relevant.
+   ```
+4. **Never delete rules automatically.** Only suggest.
+
+`:compact --aggressive` — Also archives tracking entries older than 60 days and resets `stats` counters.
+
+---
+
+### :verify Command
+
+When the user types `:verify`:
+
+1. Check that the project memory folder exists.
+2. For each expected file (`preferences.yml`, `rules.yml`, `context.yml`, `sessions/latest.json`):
+   - If **missing**: recreate from `_template/` — report: `⚠️ Recreated missing: <file>`
+   - If **exists but empty/malformed**: report corruption — `❌ Malformed: <file> — manual fix needed`
+   - If **exists and valid**: report OK — `✅ <file>`
+3. Check `schema_version` headers.
+4. Report total memory size (approximate).
+
+**Non-destructive principle:** Never overwrite a file that exists (even if malformed). Only recreate files that are completely missing. For corruption, report and let the user decide.
+
+```
+🔍 Memory Integrity Check:
+✅ preferences.yml (valid, schema v1)
+✅ rules.yml (valid, 4 rules, schema v1)
+✅ context.yml (valid, schema v1)
+⚠️ sessions/latest.json — missing, recreated
+✅ tracking.yml (valid, schema v1)
+📦 Total memory size: ~4.2 KB
+```
+
+---
+
+### :rules touch Command
+
+When the user types `:rules touch <id>`:
+
+1. Find the rule by ID.
+2. Update `last_used` to current timestamp.
+3. Confirm: `✅ Marked [id] as still relevant.`
+
+This prevents `:compact` from flagging actively-wanted rules as stale when they haven't been triggered organically.
+
+---
 
 <!-- END PROJECT MEMORY SKILL -->

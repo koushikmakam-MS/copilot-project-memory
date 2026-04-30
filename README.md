@@ -120,6 +120,7 @@ All commands use the **`:` prefix** to avoid accidental triggers. Type them as r
 :rules                    — List all do's and don'ts
 :rules add do: <desc>     — Add a "do" rule
 :rules add dont: <desc>   — Add a "don't" rule
+:rules touch <id>         — Mark a rule as still relevant
 :context                  — Show project context
 :context stack next.js    — Add to tech stack
 :extensions               — List saved IDE extensions
@@ -127,6 +128,8 @@ All commands use the **`:` prefix** to avoid accidental triggers. Type them as r
 :sessions                 — Browse session history
 :stats                    — Stats across ALL projects
 :tracking                 — View auto-learned patterns
+:compact                  — Prune stale data & enforce storage caps
+:verify                   — Check memory file integrity
 ```
 
 #### Snippets
@@ -154,7 +157,11 @@ Auto-save writes to the **active named session** automatically. `:resume` picks 
 
 #### Team Sharing & Multi-Editor
 ```
-:export team              — Generate .github/copilot-instructions.md for your team
+:export team              — Generate .github/copilot-instructions.md (shared rules only)
+:export team --all-rules  — Include all rules, not just shared ones
+:export team --scope=rules,stack  — Export specific categories only
+:export team --fresh=30d  — Only items used in last 30 days
+:export team --max-size=4kb — Cap export file size
 :export editors           — Generate instruction files for VS Code, JetBrains, Neovim, Claude Code, Cursor
 ```
 
@@ -163,6 +170,42 @@ Auto-save writes to the **active named session** automatically. `:resume` picks 
 :backup                   — Archive all memory to a file
 :restore <path>           — Restore from a backup
 :reset                    — Wipe this project's memory (asks confirmation)
+```
+
+---
+
+## 🧹 Storage Management
+
+Memory doesn't grow forever. The system enforces **hard caps** and provides tools to keep things clean:
+
+| Data | Max | What Happens |
+|------|-----|--------------|
+| Default sessions | 10 | Oldest auto-deleted on save |
+| Named session entries | 20 per session | Oldest auto-deleted |
+| Hotspots (tracking) | 5 | Lowest touch_count dropped |
+| Error patterns (tracking) | 10 | Oldest dropped |
+| Explicit rules | ∞ | **Never auto-deleted** |
+
+### Staleness Tracking
+
+Rules and preferences gain `last_used` and `use_count` metadata (best-effort). This helps `:compact` identify stale entries — but **explicit user rules are never auto-archived**.
+
+### Commands
+
+```
+:compact                  — Enforce caps, report stale items
+:compact --aggressive     — Also archive old tracking + reset stats
+:verify                   — Check all memory files for integrity (non-destructive)
+:rules touch <id>         — Mark a rule as still relevant
+```
+
+### Team Export (Selective)
+
+`:export team` only includes rules marked `share: true` by default. When you `:remember` a rule, you'll be asked if it should be shared. This prevents accidental contamination of team instructions.
+
+```
+:export team --all-rules  — Override: include all rules
+:export team --scope=rules,stack --fresh=30d --max-size=4kb
 ```
 
 ---

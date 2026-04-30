@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-04-30
+
+### Added
+- 🧹 **Storage caps & eviction** — Hard caps on sessions (10 default, 20 per named), tracking entries (5 hotspots, 10 errors). Enforced on auto-save and via `:compact`.
+- 📊 **Staleness metadata** — Rules gain `last_used`, `use_count`, and `share` fields (best-effort tracking).
+- 🔍 **`:verify` command** — Non-destructive integrity check of all memory files. Recreates missing files from template, reports corruption without overwriting.
+- 🧹 **`:compact` command** — Prunes stale derived data, enforces storage caps, suggests (never auto-deletes) stale explicit rules.
+- 📌 **`:rules touch <id>`** — Mark a rule as still relevant to prevent staleness warnings.
+- 🎯 **Selective team export** — Only rules with `share: true` are exported by default. New flags: `--scope`, `--fresh`, `--max-size`, `--all-rules`.
+- ⚡ **Contextual loading** — Only loads what's needed: prefs/rules/context/latest.json always; tracking/sessions/snippets on demand.
+- 📋 **Schema versioning** — All YAML files include `schema_version: 1` header for forward compatibility.
+- 🤝 **Share prompt on `:remember`** — Users are asked if new rules should be shared with teammates.
+
+### Changed
+- Team export uses deterministic priority order (context → don'ts → do's → architecture → testing → security → deps → git)
+- `:help` menu updated with new commands
+
 ## [1.0.0] - 2026-04-29
 
 ### Added
