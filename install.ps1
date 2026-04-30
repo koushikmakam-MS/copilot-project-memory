@@ -52,7 +52,7 @@ foreach ($dir in $dirs) {
 Write-Host "  [2/4] Setting up global memory files..." -ForegroundColor Yellow
 
 $globalPrefs = Join-Path $globalDir "preferences.yml"
-if (-not (Test-Path $globalPrefs) -or $Force) {
+if (-not (Test-Path $globalPrefs)) {
     @"
 # Global Preferences (apply to all projects unless overridden)
 # These are YOUR personal defaults.
@@ -64,10 +64,13 @@ if (-not (Test-Path $globalPrefs) -or $Force) {
 #   quotes: single
 "@ | Set-Content -Path $globalPrefs -Encoding UTF8
     Write-Host "    ✅ Created: preferences.yml" -ForegroundColor Green
+} elseif ($Force) {
+    Copy-Item $globalPrefs "$globalPrefs.bak" -Force
+    Write-Host "    ⏭️  Backed up existing preferences.yml → preferences.yml.bak" -ForegroundColor DarkGray
 }
 
 $globalRules = Join-Path $globalDir "rules.yml"
-if (-not (Test-Path $globalRules) -or $Force) {
+if (-not (Test-Path $globalRules)) {
     @"
 # Global Rules (apply to all projects unless overridden)
 # Format:
@@ -78,6 +81,9 @@ if (-not (Test-Path $globalRules) -or $Force) {
 rules: []
 "@ | Set-Content -Path $globalRules -Encoding UTF8
     Write-Host "    ✅ Created: rules.yml" -ForegroundColor Green
+} elseif ($Force) {
+    Copy-Item $globalRules "$globalRules.bak" -Force
+    Write-Host "    ⏭️  Backed up existing rules.yml → rules.yml.bak" -ForegroundColor DarkGray
 }
 
 $globalSnippets = Join-Path $globalDir "snippets" "README.md"

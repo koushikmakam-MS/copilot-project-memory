@@ -35,7 +35,7 @@ done
 # --- Step 2: Create global memory template files ---
 echo "  [2/4] Setting up global memory files..."
 
-if [ ! -f "$GLOBAL_DIR/preferences.yml" ] || [ "$FORCE" = "true" ]; then
+if [ ! -f "$GLOBAL_DIR/preferences.yml" ]; then
 cat > "$GLOBAL_DIR/preferences.yml" << 'PREFS'
 # Global Preferences (apply to all projects unless overridden)
 # These are YOUR personal defaults.
@@ -47,9 +47,12 @@ cat > "$GLOBAL_DIR/preferences.yml" << 'PREFS'
 #   quotes: single
 PREFS
     echo "    ✅ Created: preferences.yml"
+elif [ "$FORCE" = "true" ]; then
+    cp "$GLOBAL_DIR/preferences.yml" "$GLOBAL_DIR/preferences.yml.bak"
+    echo "    ⏭️  Backed up existing preferences.yml → preferences.yml.bak"
 fi
 
-if [ ! -f "$GLOBAL_DIR/rules.yml" ] || [ "$FORCE" = "true" ]; then
+if [ ! -f "$GLOBAL_DIR/rules.yml" ]; then
 cat > "$GLOBAL_DIR/rules.yml" << 'RULES'
 # Global Rules (apply to all projects unless overridden)
 # Format:
@@ -60,6 +63,9 @@ cat > "$GLOBAL_DIR/rules.yml" << 'RULES'
 rules: []
 RULES
     echo "    ✅ Created: rules.yml"
+elif [ "$FORCE" = "true" ]; then
+    cp "$GLOBAL_DIR/rules.yml" "$GLOBAL_DIR/rules.yml.bak"
+    echo "    ⏭️  Backed up existing rules.yml → rules.yml.bak"
 fi
 
 if [ ! -f "$GLOBAL_DIR/snippets/README.md" ] || [ "$FORCE" = "true" ]; then
