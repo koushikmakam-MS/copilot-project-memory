@@ -108,8 +108,10 @@ All commands use the **`:` prefix** to avoid accidental triggers. Type them as r
 
 #### Remember & Forget
 ```
-:remember Always use Zod for API validation      → ✅ Saved as a "do" rule
-:remember Never use default exports              → ✅ Saved as a "don't" rule
+:remember Always use Zod for API validation      → Asks: project or global? → ✅ Saved
+:remember Never use default exports              → Asks: project or global? → ✅ Saved
+:remember global I prefer concise answers        → ✅ Saved directly as global rule
+:remember project Use pnpm here                  → ✅ Saved directly as project rule
 :forget never-use-default-exports                → ✅ Rule removed
 ```
 
@@ -243,14 +245,17 @@ Everything lives **outside your repos** in `~/.copilot/project-memory/`:
 
 ## 🌍 Global Rules
 
-Some rules should apply everywhere. Prefix with `global`:
+Some rules should apply everywhere. You can set them explicitly:
 
 ```
+:remember global I prefer concise answers        → saved to _global/rules.yml
 :rules add global do: I prefer concise answers
 :rules add global dont: Never include unnecessary comments
 ```
 
-These live in `_global/rules.yml` and are loaded for every project.
+Or just use `:remember <rule>` — you'll be prompted to choose **project** or **global** scope.
+
+These live in `_global/rules.yml` and are loaded for every project. Project rules override global rules when they conflict.
 
 ---
 
