@@ -217,12 +217,13 @@ As you work with the user, **actively observe their patterns** and automatically
 1. After noticing a pattern **2-3 times** in a session, proactively suggest:
    ```
    💡 I've noticed you [pattern]. Want me to save this as a preference?
-   - Yes → saves to preferences.yml
+   - Yes (this project) → saves to project preferences.yml
+   - Yes (all projects) → saves to _global/preferences.yml
    - No → don't ask again this session
    ```
 2. **Never auto-save without asking.** Always get confirmation first.
 3. Group related suggestions — don't interrupt every 30 seconds. Batch them when natural (e.g., end of a task).
-4. If the user says "yes", write to `preferences.yml` and confirm: `✅ Saved preference: [key] = [value]`
+4. If the user says "yes", ask scope (project or global), write to the appropriate `preferences.yml`, and confirm: `✅ Saved preference ([scope]): [key] = [value]`
 
 **On first session with a new project:**
 After the first meaningful interaction, suggest a quick preferences setup:
@@ -462,7 +463,10 @@ Recognize these patterns (must start with `:remember`):
    - Starts with "never", "don't", "dont", "avoid", "no ", "stop" → type: `dont`
    - Everything else → type: `do`
 3. Generate an ID: lowercase the description, replace non-alphanumeric with hyphens, truncate to 50 chars.
-4. Append to the project's `rules.yml`:
+4. **Ask scope:** `📌 Where should this rule apply?`
+   - **This project** → save to `<project>/rules.yml`
+   - **All projects (global)** → save to `_global/rules.yml`
+5. Append to the chosen `rules.yml`:
    ```yaml
    - id: <generated-id>
      type: do|dont
@@ -473,9 +477,11 @@ Recognize these patterns (must start with `:remember`):
      use_count: 0
      share: false
    ```
-5. Confirm: `✅ Remembered as a [do/don't]: "[description]"`
-6. Ask: `🌍 Should this rule be shared with teammates via :export team? (yes/no)`
+6. Confirm: `✅ Remembered as a [do/don't] ([scope]): "[description]"`
+7. Ask: `🌍 Should this rule be shared with teammates via :export team? (yes/no)`
    - If yes, set `share: true`
+
+**Shortcut:** If the user explicitly says `:remember global ...`, skip the scope question and save to `_global/rules.yml` directly. Similarly `:remember project ...` saves to the project directly.
 
 ### When User Says ":forget"
 
@@ -490,8 +496,9 @@ Recognize (must start with `:forget`): ":forget ..."
 
 If you notice the user correcting the same pattern multiple times in a session:
 1. Suggest: `💡 I've noticed you've corrected [pattern] multiple times. Want me to remember this as a rule?`
-2. If yes, save to `rules.yml` with `learned_from: "learned from repeated corrections"`
-3. If no, don't ask again for this pattern in this session.
+2. If yes, ask: `📌 For this project only, or all projects (global)?`
+3. Save to the chosen `rules.yml` with `learned_from: "learned from repeated corrections"`
+4. If no, don't ask again for this pattern in this session.
 
 ---
 
