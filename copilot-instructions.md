@@ -11,7 +11,15 @@ This gives you long-term memory for each project — preferences, rules, context
 
 **Whenever the user types `:status`, `:resume`, or asks to "load memory" / "check memory" / "resume session":**
 Run a directory listing of `~/.copilot/project-memory/` and find the folder matching the CWD leaf name.
-Then read `preferences.yml`, `rules.yml`, `context.yml`, and `sessions/latest.json` from that folder.
+Then read from **both** the project folder AND the `_global/` folder:
+1. `_global/preferences.yml` and `_global/rules.yml` (global defaults)
+2. `<project>/preferences.yml`, `<project>/rules.yml`, `<project>/context.yml`, and `<project>/sessions/latest.json`
+
+**Show both in `:status` output** — clearly labeled:
+```
+🌍 Global: X rules, Y preferences
+📂 Project: X rules, Y preferences, Z sessions
+```
 
 **On your first reply in any conversation**, if you haven't loaded project memory yet, briefly mention:
 ```
@@ -106,7 +114,7 @@ When the user types `:help`, `:?`, or just `:`, show a quick reference:
 
 | Load Timing | Files | Why |
 |-------------|-------|-----|
-| **Always** (on `:status`, `:resume`, session start) | `preferences.yml`, `rules.yml`, `context.yml`, `sessions/latest.json` | Small, always relevant |
+| **Always** (on `:status`, `:resume`, session start) | `_global/preferences.yml`, `_global/rules.yml`, `<project>/preferences.yml`, `<project>/rules.yml`, `<project>/context.yml`, `<project>/sessions/latest.json` | Small, always relevant |
 | **On demand** (only when explicitly requested) | `tracking.yml` | Only for `:tracking` or `:tracking promote` |
 | **On demand** | Full session JSON files | Only for `:resume`, `:sessions last`, `:session load` |
 | **On demand** | `snippets/*.md` | Only for `:snippets get <name>` |
@@ -494,7 +502,7 @@ If you notice the user correcting the same pattern multiple times in a session:
 #### Core Commands
 | User Types | What To Do |
 |-----------|------------|
-| `:status` | Load project memory, show overview: preference count, rule count, extension count, session count, last session summary |
+| `:status` | Load project memory AND global memory, show overview: global rule count, project rule count, preference count, extension count, session count, last session summary |
 | `:resume` | Load project memory, read last session, show summary, and offer to continue where you left off |
 | `:prefs` / `:prefs` | List all preferences |
 | `:prefs set <key> <value>` | Set a preference |
