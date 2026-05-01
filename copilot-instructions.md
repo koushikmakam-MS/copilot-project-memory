@@ -137,36 +137,74 @@ When reading a file, check `schema_version`. If missing, treat as version 1 and 
 
 ---
 
-### Auto-Save on Exit (CRITICAL — ALWAYS DO THIS)
+### Incremental Auto-Save (CRITICAL — SAVE EARLY, SAVE OFTEN)
 
-**Before ending ANY session** — whether the user says goodbye, closes the conversation, or the session ends for any reason:
+Sessions are saved **incrementally** throughout the conversation — not just on exit.
+This ensures data is never lost to abrupt terminal closures or disconnects.
+
+#### Save Triggers (do ALL of these silently — never ask the user)
+
+Save/update the session file after ANY of these events:
+1. **First meaningful interaction** — create the session file immediately after:
+   - Any tool use (file edits, commands, searches)
+   - Any code generation or editing
+   - Any explicit decision or preference capture
+   - (Do NOT create a session for trivial greetings or one-word responses)
+2. **After any response that changes files** — update `filesChanged`
+3. **After any response that records a decision or learning** — update `decisions`/`learnings`
+4. **Before switching sessions** — finalize current session, then switch
+5. **On exit (if possible)** — final update with `endedAt` and `status: "closed"`
+
+#### Session File Format
+
+```json
+{
+  "sessionId": "<uuid>",
+  "status": "active",
+  "startedAt": "<ISO timestamp>",
+  "lastUpdatedAt": "<ISO timestamp>",
+  "endedAt": null,
+  "summary": "<rolling summary, updated as session progresses>",
+  "filesChanged": ["<accumulated list>"],
+  "decisions": ["<key decisions made, accumulated>"],
+  "learnings": ["<new things learned, accumulated>"]
+}
+```
+
+**Status values:**
+- `"active"` — session is currently in progress
+- `"closed"` — session ended cleanly (user said goodbye, `:session new`, etc.)
+- `"abandoned"` — session was never cleanly closed (detected on next startup)
+
+#### How to Save
 
 1. Determine the active session target:
    - If a **named session** is active (check `sessions/latest.json` → `activeSession`), save into `sessions/<name>/`
    - Otherwise, save into `sessions/_default/`
-2. Create a session summary JSON file:
-   ```json
-   {
-     "sessionId": "<uuid>",
-     "startedAt": "<ISO timestamp>",
-     "endedAt": "<ISO timestamp>",
-     "summary": "<2-3 sentence summary of what was accomplished>",
-     "filesChanged": ["<list of files modified>"],
-     "decisions": ["<key decisions made>"],
-     "learnings": ["<new things learned about user preferences>"]
-   }
-   ```
-3. Update `sessions/latest.json`:
+2. On **first save**: create the JSON file with a new UUID, set `status: "active"`, `startedAt`, `lastUpdatedAt`.
+3. On **subsequent saves**: update the same file in-place — append to arrays, update `summary`, update `lastUpdatedAt`.
+4. Update `sessions/latest.json` on every save:
    ```json
    {
      "lastSessionId": "<uuid>",
-     "lastAccessedAt": "<ISO timestamp>",
+     "lastUpdatedAt": "<ISO timestamp>",
      "activeSession": "<name or null>"
    }
    ```
-4. If any new preferences or rules were learned during the session, update the YAML files.
-5. **Do this silently** — no need to tell the user, just do it.
+5. If any new preferences or rules were learned during the session, update the YAML files.
 6. **Enforce storage caps** after saving (see Storage Caps section).
+
+#### On Session Start (Handling Abandoned Sessions)
+
+When loading project memory at the start of a new conversation:
+- If `latest.json` points to a session with `status: "active"` (i.e., never closed), mark it as `"abandoned"` and update its `endedAt` to its `lastUpdatedAt`.
+- Then start a fresh session. Do NOT resume abandoned sessions automatically — let the user choose via `:resume`.
+
+#### On Session Switch (`:session new` / `:session load`)
+
+1. Finalize the current session: set `status: "closed"`, `endedAt` to now.
+2. Create a new session file in the new target folder.
+3. Update `latest.json` to point to the new session.
 
 ### Named Sessions (Multiple Features)
 
@@ -668,8 +706,8 @@ Memory files must not grow unbounded. Enforce these **hard caps**:
 
 | Data | Max Entries | Eviction Rule |
 |------|-------------|---------------|
-| `sessions/_default/` | 10 JSON files | Delete oldest by `endedAt` |
-| Named session entries | 20 JSON files per session | Delete oldest |
+| `sessions/_default/` | 10 JSON files | Delete oldest by `endedAt` (fall back to `lastUpdatedAt` if `endedAt` is null) |
+| Named session entries | 20 JSON files per session | Delete oldest by `endedAt` or `lastUpdatedAt` |
 | `tracking.yml` → `hotspots` | 5 entries | Keep highest `touch_count` |
 | `tracking.yml` → `common_errors` | 10 entries | Keep most recent |
 | `tracking.yml` → `review_patterns` | 10 entries | Keep most recent |
@@ -679,7 +717,7 @@ Memory files must not grow unbounded. Enforce these **hard caps**:
 **Important:** 
 - **NEVER auto-archive or delete explicit user rules** (those with `learned_from: "explicit instruction"`).
 - Only auto-compact **derived data** (tracking, default sessions).
-- Enforce caps silently during auto-save on exit.
+- Enforce caps silently during incremental auto-save.
 
 #### Staleness Metadata (Best-Effort)
 

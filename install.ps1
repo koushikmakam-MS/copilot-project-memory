@@ -177,12 +177,13 @@ You have access to a persistent project memory system stored at ~/.copilot/proje
 - Project-level rules ALWAYS override global rules when they conflict.
 - Project preferences override global preferences for the same key.
 
-### Auto-Save on Exit
-Before ending ANY session (when user says goodbye, exits, or conversation ends):
-1. Write a session summary to the project's sessions/ folder as a JSON file
-2. Include: what was discussed, files changed, decisions made, new learnings
-3. Update sessions/latest.json to point to this session
-4. This is AUTOMATIC — never ask the user, just do it silently
+### Incremental Auto-Save
+Save session data incrementally throughout the conversation — not just on exit:
+1. Create session file on first meaningful interaction (tool use, code gen, decisions)
+2. Update in-place after each response that changes files or records decisions
+3. Update sessions/latest.json on every save
+4. On clean exit, set status to "closed". Unclean exits leave status as "active" (marked "abandoned" on next startup)
+5. This is AUTOMATIC — never ask the user, just do it silently
 
 ### When User Says ":remember"
 - Parse the instruction and save it as a rule in the project's rules.yml

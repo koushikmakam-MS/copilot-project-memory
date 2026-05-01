@@ -90,8 +90,9 @@ The installer handles this automatically. Three options if you need to grant acc
 |------|-------------|
 | **First time in a folder** | Auto-detects stack (package.json, Cargo.toml, etc.), creates project memory |
 | **Returning to a folder** | Loads your memory, hints to resume last session |
+| **During a session** | Saves incrementally after each meaningful interaction — never loses progress |
 | **During a session** | Detects repeated corrections → suggests saving as rules |
-| **End of session** | Auto-saves what happened (silent, no prompt) |
+| **End of session** | Final save with closed status (but data is already safe from incremental saves) |
 
 ### Commands
 

@@ -135,8 +135,10 @@ You have access to a persistent project memory system stored at ~/.copilot/proje
 3. If memory exists, load all YAML files and offer to resume last session.
 4. If no memory exists, auto-detect stack and create from template.
 
-### Auto-Save on Exit
-Before ending ANY session, silently save a session summary with: what was discussed, files changed, decisions made, learnings.
+### Incremental Auto-Save
+Save session data incrementally throughout the conversation — not just on exit.
+Create session on first meaningful interaction, update after each file change or decision.
+On clean exit set status "closed"; unclean exits are detected and marked "abandoned" on next startup.
 
 ### Commands (all use : prefix)
 - :status|:prefs|:rules|:context|:extensions|:sessions|:snippets|:export|:backup|:restore|:reset|:stats|:tracking|:help
