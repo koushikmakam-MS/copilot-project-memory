@@ -16,3 +16,6 @@ Thumbs.db
 # Ignore backup artifacts
 *.tar.gz
 *.zip
+
+# Auto-generated project memory export (optional — remove this line to commit it for teammates)
+.github/instructions/project-memory.instructions.md

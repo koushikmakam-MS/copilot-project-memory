@@ -175,15 +175,20 @@ Enable once — never manually export again:
 :prefs set auto_export_editors true
 ```
 
-When enabled, `.github/copilot-instructions.md` is **automatically regenerated** whenever you:
+When enabled, `.github/instructions/project-memory.instructions.md` is **automatically regenerated** whenever you:
 - `:remember` or `:forget` a rule
 - `:prefs set` a preference
 - `:context set` or `:context stack`
 - `:tracking promote` a pattern
 
-VS Code, JetBrains, and other editors pick up changes immediately — no restart needed.
+This file lives **alongside** `.github/copilot-instructions.md` (team instructions) — they never conflict:
+- `.github/copilot-instructions.md` → team rules (manual, committed)
+- `.github/instructions/project-memory.instructions.md` → your memory (auto-generated, gitignored by default)
 
-> 💡 This is enabled **globally by default** after install. Disable per-project with `:prefs set auto_export_editors false`.
+VS Code and JetBrains read both locations automatically. No restart needed.
+
+> 💡 Enabled **globally by default** after install. Disable per-project with `:prefs set auto_export_editors false`.
+> To share with teammates, remove the gitignore entry for this file.
 
 #### Backup, Restore & Reset
 ```
