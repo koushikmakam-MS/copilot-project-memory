@@ -168,6 +168,23 @@ Auto-save writes to the **active named session** automatically. `:resume` picks 
 :export editors           — Generate instruction files for VS Code, JetBrains, Neovim, Claude Code, Cursor
 ```
 
+#### Auto-Export to Editors (New!)
+
+Enable once — never manually export again:
+```
+:prefs set auto_export_editors true
+```
+
+When enabled, `.github/copilot-instructions.md` is **automatically regenerated** whenever you:
+- `:remember` or `:forget` a rule
+- `:prefs set` a preference
+- `:context set` or `:context stack`
+- `:tracking promote` a pattern
+
+VS Code, JetBrains, and other editors pick up changes immediately — no restart needed.
+
+> 💡 This is enabled **globally by default** after install. Disable per-project with `:prefs set auto_export_editors false`.
+
 #### Backup, Restore & Reset
 ```
 :backup                   — Archive all memory to a file
@@ -314,7 +331,7 @@ A: Use `:backup` on the old machine, copy the archive, and `:restore <path>` on 
 A: Project rules always win. Global rules are defaults that can be overridden per-project.
 
 **Q: Does it work with VS Code / JetBrains Copilot?**
-A: The memory system is designed for Copilot CLI. Use `:export editors` to generate instruction files that bring your rules to VS Code, JetBrains, Neovim, Cursor, and Claude Code.
+A: Yes! Enable `auto_export_editors` (on by default) and your rules/preferences automatically sync to `.github/copilot-instructions.md` which VS Code and JetBrains read natively. You can also run `:export editors` to generate files for Neovim, Cursor, and Claude Code.
 
 ---
 
