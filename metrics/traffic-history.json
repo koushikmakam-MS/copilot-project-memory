@@ -1,176 +1,176 @@
-﻿{
-    "repo":  "koushikmakam-MS/copilot-project-memory",
-    "last_updated":  "2026-05-15T16:43:39Z",
-    "clones":  [
-                   {
-                       "date":  "2026-05-01",
-                       "count":  5,
-                       "uniques":  5
-                   },
-                   {
-                       "date":  "2026-05-02",
-                       "count":  7,
-                       "uniques":  2
-                   },
-                   {
-                       "date":  "2026-05-03",
-                       "count":  1,
-                       "uniques":  1
-                   },
-                   {
-                       "date":  "2026-05-04",
-                       "count":  37,
-                       "uniques":  14
-                   },
-                   {
-                       "date":  "2026-05-05",
-                       "count":  29,
-                       "uniques":  8
-                   },
-                   {
-                       "date":  "2026-05-06",
-                       "count":  1,
-                       "uniques":  1
-                   },
-                   {
-                       "date":  "2026-05-07",
-                       "count":  7,
-                       "uniques":  4
-                   },
-                   {
-                       "date":  "2026-05-08",
-                       "count":  0,
-                       "uniques":  0
-                   },
-                   {
-                       "date":  "2026-05-09",
-                       "count":  0,
-                       "uniques":  0
-                   },
-                   {
-                       "date":  "2026-05-10",
-                       "count":  0,
-                       "uniques":  0
-                   },
-                   {
-                       "date":  "2026-05-11",
-                       "count":  1,
-                       "uniques":  1
-                   },
-                   {
-                       "date":  "2026-05-12",
-                       "count":  1,
-                       "uniques":  1
-                   },
-                   {
-                       "date":  "2026-05-13",
-                       "count":  0,
-                       "uniques":  0
-                   },
-                   {
-                       "date":  "2026-05-14",
-                       "count":  1,
-                       "uniques":  1
-                   }
-               ],
-    "views":  [
-                  {
-                      "date":  "2026-05-01",
-                      "count":  10,
-                      "uniques":  6
-                  },
-                  {
-                      "date":  "2026-05-02",
-                      "count":  0,
-                      "uniques":  0
-                  },
-                  {
-                      "date":  "2026-05-03",
-                      "count":  0,
-                      "uniques":  0
-                  },
-                  {
-                      "date":  "2026-05-04",
-                      "count":  2,
-                      "uniques":  1
-                  },
-                  {
-                      "date":  "2026-05-05",
-                      "count":  3,
-                      "uniques":  2
-                  },
-                  {
-                      "date":  "2026-05-06",
-                      "count":  3,
-                      "uniques":  3
-                  },
-                  {
-                      "date":  "2026-05-07",
-                      "count":  9,
-                      "uniques":  4
-                  },
-                  {
-                      "date":  "2026-05-08",
-                      "count":  2,
-                      "uniques":  1
-                  },
-                  {
-                      "date":  "2026-05-09",
-                      "count":  0,
-                      "uniques":  0
-                  },
-                  {
-                      "date":  "2026-05-10",
-                      "count":  1,
-                      "uniques":  1
-                  },
-                  {
-                      "date":  "2026-05-11",
-                      "count":  0,
-                      "uniques":  0
-                  },
-                  {
-                      "date":  "2026-05-12",
-                      "count":  2,
-                      "uniques":  2
-                  },
-                  {
-                      "date":  "2026-05-13",
-                      "count":  1,
-                      "uniques":  1
-                  },
-                  {
-                      "date":  "2026-05-14",
-                      "count":  4,
-                      "uniques":  2
-                  }
-              ],
-    "referrers":  [
-                      {
-                          "date":  "2026-05-15",
-                          "referrer":  "github.com",
-                          "count":  7,
-                          "uniques":  2
-                      },
-                      {
-                          "date":  "2026-05-15",
-                          "referrer":  "teams.public.onecdn.static.microsoft",
-                          "count":  5,
-                          "uniques":  3
-                      },
-                      {
-                          "date":  "2026-05-15",
-                          "referrer":  "statics.teams.cdn.office.net",
-                          "count":  4,
-                          "uniques":  3
-                      }
-                  ],
-    "repo_stats":  [
-                       {
-                           "date":  "2026-05-15",
-                           "stars":  1,
-                           "forks":  0,
-                           "watchers":  0
-                       }
-                   ]
+{
+  "repo": "koushikmakam-MS/copilot-project-memory",
+  "last_updated": "2026-05-15T17:00:43Z",
+  "clones": [
+    {
+      "date": "2026-05-01",
+      "count": 5,
+      "uniques": 5
+    },
+    {
+      "date": "2026-05-02",
+      "count": 7,
+      "uniques": 2
+    },
+    {
+      "date": "2026-05-03",
+      "count": 1,
+      "uniques": 1
+    },
+    {
+      "date": "2026-05-04",
+      "count": 37,
+      "uniques": 14
+    },
+    {
+      "date": "2026-05-05",
+      "count": 29,
+      "uniques": 8
+    },
+    {
+      "date": "2026-05-06",
+      "count": 1,
+      "uniques": 1
+    },
+    {
+      "date": "2026-05-07",
+      "count": 7,
+      "uniques": 4
+    },
+    {
+      "date": "2026-05-08",
+      "count": 0,
+      "uniques": 0
+    },
+    {
+      "date": "2026-05-09",
+      "count": 0,
+      "uniques": 0
+    },
+    {
+      "date": "2026-05-10",
+      "count": 0,
+      "uniques": 0
+    },
+    {
+      "date": "2026-05-11",
+      "count": 1,
+      "uniques": 1
+    },
+    {
+      "date": "2026-05-12",
+      "count": 1,
+      "uniques": 1
+    },
+    {
+      "date": "2026-05-13",
+      "count": 0,
+      "uniques": 0
+    },
+    {
+      "date": "2026-05-14",
+      "count": 1,
+      "uniques": 1
+    }
+  ],
+  "views": [
+    {
+      "date": "2026-05-01",
+      "count": 10,
+      "uniques": 6
+    },
+    {
+      "date": "2026-05-02",
+      "count": 0,
+      "uniques": 0
+    },
+    {
+      "date": "2026-05-03",
+      "count": 0,
+      "uniques": 0
+    },
+    {
+      "date": "2026-05-04",
+      "count": 2,
+      "uniques": 1
+    },
+    {
+      "date": "2026-05-05",
+      "count": 3,
+      "uniques": 2
+    },
+    {
+      "date": "2026-05-06",
+      "count": 3,
+      "uniques": 3
+    },
+    {
+      "date": "2026-05-07",
+      "count": 9,
+      "uniques": 4
+    },
+    {
+      "date": "2026-05-08",
+      "count": 2,
+      "uniques": 1
+    },
+    {
+      "date": "2026-05-09",
+      "count": 0,
+      "uniques": 0
+    },
+    {
+      "date": "2026-05-10",
+      "count": 1,
+      "uniques": 1
+    },
+    {
+      "date": "2026-05-11",
+      "count": 0,
+      "uniques": 0
+    },
+    {
+      "date": "2026-05-12",
+      "count": 2,
+      "uniques": 2
+    },
+    {
+      "date": "2026-05-13",
+      "count": 1,
+      "uniques": 1
+    },
+    {
+      "date": "2026-05-14",
+      "count": 4,
+      "uniques": 2
+    }
+  ],
+  "referrers": [
+    {
+      "date": "2026-05-15",
+      "referrer": "github.com",
+      "count": 7,
+      "uniques": 2
+    },
+    {
+      "date": "2026-05-15",
+      "referrer": "teams.public.onecdn.static.microsoft",
+      "count": 5,
+      "uniques": 3
+    },
+    {
+      "date": "2026-05-15",
+      "referrer": "statics.teams.cdn.office.net",
+      "count": 4,
+      "uniques": 3
+    }
+  ],
+  "repo_stats": [
+    {
+      "date": "2026-05-15",
+      "stars": 1,
+      "forks": 0,
+      "watchers": 0
+    }
+  ]
 }
