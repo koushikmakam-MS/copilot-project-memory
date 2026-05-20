@@ -36,6 +36,13 @@ You (in any project) → Copilot loads your memory → applies your rules → sa
 
 ## 🎬 See It In Action
 
+<p align="center">
+  <img src="demo.gif" alt="Copilot Project Memory Demo" width="700">
+</p>
+
+<details>
+<summary>Text version (if GIF doesn't load)</summary>
+
 ```
 You: :status
 🧠 Project: my-api | 4 rules | 3 prefs | 12 sessions
@@ -55,6 +62,8 @@ You: :remember Always validate API inputs with Zod
 ```
 
 Next time you open Copilot in that project — **it already knows your rules, your context, and where you left off.**
+
+</details>
 
 ---
 
