@@ -34,6 +34,30 @@ You (in any project) → Copilot loads your memory → applies your rules → sa
 
 ---
 
+## 🎬 See It In Action
+
+```
+You: :status
+🧠 Project: my-api | 4 rules | 3 prefs | 12 sessions
+   Stack: Node.js, Express, TypeScript
+   Last session: 2h ago — "Added rate limiting to auth endpoints"
+
+You: :resume
+📌 Resuming: "Added rate limiting to auth endpoints"
+   Files: src/auth/middleware.ts, src/api/routes.ts
+   Decision: Use sliding window algorithm for rate limits
+
+You: :remember Never use any type in this project
+✅ Remembered as a don't: "Never use any type in this project"
+
+You: :remember Always validate API inputs with Zod
+✅ Remembered as a do: "Always validate API inputs with Zod"
+```
+
+Next time you open Copilot in that project — **it already knows your rules, your context, and where you left off.**
+
+---
+
 ## 🚀 Install (One Time, Any Machine)
 
 ### Windows (PowerShell)
