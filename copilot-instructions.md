@@ -33,8 +33,9 @@ or making any changes, you MUST classify the task first:
 
 1. Say: `🔄 Pipeline mode activated (reason: <which rule matched>)`
 2. Jump to the **Pipeline Executor Protocol** section below
-3. Follow Phases 1 → 1b → 2 → 3 → 4 strictly
+3. Follow ALL phases strictly: 1 → 1b → 2 → 3 → **4a (code verify)** → **4b (AI verify)**
 4. Do NOT start any work before completing Phase 1b (user approval)
+5. Do NOT stop after Phase 3 (report) — Phase 4 (validation) is MANDATORY
 
 ### Why this check exists:
 
@@ -1167,12 +1168,16 @@ Status: ✅ PASSED | ❌ FAILED at step [id] | ⚠️ PARTIAL (N/M steps)
   ─────────────────────────────────────────────────────────
   Total: 5 steps | ✅ 3 passed | ❌ 1 failed | 🚫 1 blocked
 
+  ⏳ Running verification (Phase 4)...
+
 ═══════════════════════
 ```
 
+**⚠️ DO NOT STOP HERE. Phase 3 is NOT the last phase. You MUST immediately proceed to Phase 4 (VALIDATE) below. The pipeline is NOT complete until validation runs.**
+
 #### Phase 4: VALIDATE (automatic — two-layer verification)
 
-**After completing Phase 3 (REPORT), you MUST run validation.** This is NOT optional.
+**MANDATORY — the pipeline is incomplete without this phase.**
 Validation has TWO layers — code verification first, then AI verification.
 
 ##### Phase 4a: CODE VERIFICATION (deterministic)
