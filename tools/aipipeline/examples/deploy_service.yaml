@@ -1,0 +1,58 @@
+# Example: Deploy a Node.js Service
+# This is the simplified YAML format — human-friendly, no code needed.
+
+name: Deploy Node.js Service
+description: Build, test, and deploy a Node.js application
+
+steps:
+  - id: check-node
+    do: "Verify Node.js is installed"
+    run: node --version
+    check:
+      - exit code 0
+
+  - id: install-deps
+    do: "Install project dependencies"
+    run: npm install
+    after: [check-node]
+    precheck:
+      - package.json exists
+    check:
+      - node_modules/ exists
+
+  - id: lint
+    do: "Run linter"
+    run: npm run lint
+    after: [install-deps]
+    check:
+      - exit code 0
+    optional: true  # lint failure won't block the pipeline
+
+  - id: test
+    do: "Run test suite"
+    run: npm test
+    after: [install-deps]
+    check:
+      - exit code 0
+      - output contains "passing"
+
+  - id: build
+    do: "Build production bundle"
+    run: npm run build
+    after: [test]
+    check:
+      - dist/ exists
+      - dist/index.js exists
+
+  - id: deploy
+    do: "Deploy to staging"
+    run: npm run deploy:staging
+    after: [build, lint]
+    precheck:
+      - .env exists
+    check:
+      - exit code 0
+      - output contains "deployed successfully"
+    retry:
+      max_attempts: 3
+      backoff_seconds: 5

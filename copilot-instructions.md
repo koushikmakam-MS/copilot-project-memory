@@ -1099,6 +1099,10 @@ For EACH step in the stored plan, output this EXACT structure:
   ❌ condition 1 (evidence: <why it failed>) → STOPPING
 
 📊 RESULT: ✅ PASSED | ❌ FAILED | ⏭️ SKIPPED (optional step)
+
+🔍 VERIFY (run this shell command — mandatory, not optional):
+  aipipeline verify pipelines/active-plan.yaml --step [step-id] --cwd .
+  → Output: ✅ PASS or ❌ FAIL with evidence
 ```
 
 **Execution rules:**
@@ -1108,7 +1112,8 @@ For EACH step in the stored plan, output this EXACT structure:
 4. **If a pre-check fails on a required step**, STOP the pipeline immediately.
 5. **If a post-check fails**, STOP and report what went wrong.
 6. **Use real tool calls** for verification — actually run commands, check files, read output.
-7. **Update the plan file** after each step completes — mark the step status in `active-plan.yaml`:
+7. **ALWAYS run `aipipeline verify --step <id>`** after each step's post-check. This is a shell command you MUST execute — it is the code-enforced verification layer. If you skip this, the pipeline is invalid.
+8. **Update the plan file** after each step completes — mark the step status in `active-plan.yaml`:
    ```yaml
    steps:
      - id: check-python
@@ -1168,36 +1173,31 @@ Status: ✅ PASSED | ❌ FAILED at step [id] | ⚠️ PARTIAL (N/M steps)
   ─────────────────────────────────────────────────────────
   Total: 5 steps | ✅ 3 passed | ❌ 1 failed | 🚫 1 blocked
 
-  ⏳ Running verification (Phase 4)...
+  ⏳ Running final verification...
 
 ═══════════════════════
 ```
 
-**⚠️ DO NOT STOP HERE. Phase 3 is NOT the last phase. You MUST immediately proceed to Phase 4 (VALIDATE) below. The pipeline is NOT complete until validation runs.**
+**⚠️ DO NOT STOP HERE. You MUST run Phase 4 (final validation).**
 
-#### Phase 4: VALIDATE (automatic — two-layer verification)
+#### Phase 4: VALIDATE (final check)
 
-**MANDATORY — the pipeline is incomplete without this phase.**
-Validation has TWO layers — code verification first, then AI verification.
+Each step was already code-verified via `aipipeline verify --step` during Phase 2.
+Phase 4 runs a **full plan verification** and an **AI compliance review**.
 
-##### Phase 4a: CODE VERIFICATION (deterministic)
+##### Phase 4a: FULL CODE VERIFICATION
 
-Run the `aipipeline` tool to verify all postconditions from the stored plan:
+Run `aipipeline verify` against the ENTIRE plan to catch anything missed:
 
 ```
-aipipeline verify pipelines/active-plan.yaml
+aipipeline verify pipelines/active-plan.yaml --cwd .
 ```
 
-This deterministically checks every pre/postcondition in the plan against the actual filesystem and environment.
-- If verification **PASSES** → proceed to Phase 4b
-- If verification **FAILS** → fix the failing steps FIRST, then re-run `aipipeline verify`
-- Do NOT skip this step. Code verification catches objective failures (missing files, wrong exit codes) that AI review cannot.
-
-**IMPORTANT:** You run this via the powershell/bash tool silently — the user sees the result in the pipeline report, not the raw command.
+This is a single shell command. Execute it and show the output. If any step FAILS, fix it before proceeding.
 
 ##### Phase 4b: AI VERIFICATION (rubber-duck agent)
 
-After code verification passes, call the **rubber-duck agent** for subjective/structural review:
+After code verification passes, call the **rubber-duck agent** for structural review:
 Call the **rubber-duck agent** (via the `task` tool with `agent_type: "rubber-duck"`) with this prompt:
 
 ```
