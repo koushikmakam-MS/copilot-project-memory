@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   One-time installer for Copilot Project Memory skill.
   Run once on any machine — works forever after.
@@ -86,7 +86,7 @@ rules: []
     Write-Host "    ⏭️  Backed up existing rules.yml → rules.yml.bak" -ForegroundColor DarkGray
 }
 
-$globalSnippets = Join-Path $globalDir "snippets" "README.md"
+$globalSnippets = Join-Path (Join-Path $globalDir "snippets") "README.md"
 if (-not (Test-Path $globalSnippets) -or $Force) {
     @"
 # Snippets
@@ -144,83 +144,14 @@ extensions: []
 Write-Host "    ✅ Created project template" -ForegroundColor Green
 
 # --- Step 4: Install master instructions ---
-Write-Host "  [4/4] Installing master instructions..." -ForegroundColor Yellow
+Write-Host "  [4/5] Installing master instructions..." -ForegroundColor Yellow
 
 $masterPrompt = Get-Content -Path (Join-Path $PSScriptRoot "copilot-instructions.md") -Raw -ErrorAction SilentlyContinue
 
 if (-not $masterPrompt) {
-    # Inline fallback — the full prompt is embedded here for standalone install
-    $masterPrompt = @"
-
-<!-- PROJECT MEMORY SKILL — Do not edit this section manually -->
-<!-- Installed by copilot-project-memory. See: ~/.copilot/project-memory/ -->
-
-## Project Memory System
-
-You have access to a persistent project memory system stored at ~/.copilot/project-memory/.
-
-### On Every Session Start
-1. Determine the current working directory.
-2. Check if a project memory folder exists for this directory in ~/.copilot/project-memory/.
-   - The folder name is the project directory's leaf name + a short hash.
-3. If memory exists:
-   - Load preferences.yml, rules.yml, context.yml, extensions.yml
-   - Also load global rules from ~/.copilot/project-memory/_global/
-   - Check sessions/ for the last session summary
-   - Tell the user: "📂 Found project memory for [name]. Resume last session or start fresh?"
-4. If no memory exists:
-   - Auto-detect the project stack by checking for package.json, requirements.txt, Cargo.toml, go.mod, pom.xml, etc.
-   - Create a new project memory folder using the _template as a base
-   - Tell the user: "📂 New project detected! I've auto-detected [stack]. I'll start learning your preferences."
-
-### Conflict Resolution
-- Project-level rules ALWAYS override global rules when they conflict.
-- Project preferences override global preferences for the same key.
-
-### Incremental Auto-Save
-Save session data incrementally throughout the conversation — not just on exit:
-1. Create session file on first meaningful interaction (tool use, code gen, decisions)
-2. Update in-place after each response that changes files or records decisions
-3. Update sessions/latest.json on every save
-4. On clean exit, set status to "closed". Unclean exits leave status as "active" (marked "abandoned" on next startup)
-5. This is AUTOMATIC — never ask the user, just do it silently
-
-### When User Says ":remember"
-- Parse the instruction and save it as a rule in the project's rules.yml
-- If it starts with "never", "don't", "avoid", "no" → save as type: dont
-- Otherwise → save as type: do
-- Confirm: "✅ Remembered: [description]"
-
-### When User Says ":forget"
-- Remove the specified rule from rules.yml
-- Confirm: "✅ Forgot: [rule]"
-
-### When User Repeats a Correction 2+ Times
-- Suggest: "I notice you've corrected this pattern before. Want me to remember this as a rule?"
-- If yes, save to rules.yml with learned_from: "learned from repeated corrections"
-
-### Commands (all use : prefix)
-- :status — Show overview (preference count, rule count, extension count, session count)
-- :prefs — List preferences; :prefs set <key> <value>; :prefs remove <key>
-- :rules — List rules; :rules add do rule: <desc>; :rules add dont rule: <desc>; :rules remove <id>
-- :context — Show context; :context set <field> <value>; :context stack <item>; :context keyfile <path>
-- :extensions — List extensions; :extensions add <id> <name>; :extensions remove <id>
-- :sessions — List sessions; :sessions last — show last session details
-- :snippets — List snippets; :snippets save <name>; :snippets get <name>; :snippets delete <name>
-- :export — Export full memory as a single markdown block
-- :export team — Export project rules as .github/copilot-instructions.md for team sharing
-- :export editors — Export instruction files for all supported editors
-- :backup — Export all memory as a backup archive
-- :restore <path> — Restore memory from a backup archive
-- :reset — Wipe current project memory (asks for confirmation)
-- :stats — Show detailed statistics across all projects
-- :tracking — View auto-tracked behavioral patterns
-- :remember <instruction> — Quick-add a rule
-- :forget <rule-id> — Remove a rule
-- :help — Show quick reference
-
-<!-- END PROJECT MEMORY SKILL -->
-"@
+    Write-Host "    !! copilot-instructions.md not found in $PSScriptRoot" -ForegroundColor Red
+    Write-Host "       Run installer from the copilot-project-memory repo directory." -ForegroundColor White
+    exit 1
 }
 
 # Check if instructions file already exists and has memory skill
@@ -252,7 +183,39 @@ Write-Host ""
 Write-Host "  Memory location:  $memoryDir" -ForegroundColor White
 Write-Host "  Instructions:     $instructionsFile" -ForegroundColor White
 
-# --- Step 5: Set up auto-permissions via shell alias ---
+# --- Step 5: Install bundled tools ---
+Write-Host "  [5/5] Installing bundled tools..." -ForegroundColor Yellow
+
+$toolsDir = Join-Path $PSScriptRoot "tools"
+if (Test-Path $toolsDir) {
+    $toolDirs = Get-ChildItem -Path $toolsDir -Directory | Where-Object {
+        Test-Path (Join-Path $_.FullName "pyproject.toml")
+    }
+    if ($toolDirs.Count -eq 0) {
+        Write-Host "    -- No tools found in tools/" -ForegroundColor DarkGray
+    }
+    $oldEAP = $ErrorActionPreference
+    $ErrorActionPreference = "Continue"
+    foreach ($tool in $toolDirs) {
+        $toolName = $tool.Name
+        Write-Host "    Installing $toolName..." -ForegroundColor White -NoNewline
+        try {
+            $pipResult = python -m pip install $tool.FullName 2>&1 | Out-String
+            if ($pipResult -match "Successfully installed" -or $pipResult -match "already satisfied") {
+                Write-Host " OK" -ForegroundColor Green
+            } else {
+                Write-Host " WARN (check: pip install $($tool.FullName))" -ForegroundColor Yellow
+            }
+        } catch {
+            Write-Host " FAILED (Python/pip required)" -ForegroundColor Yellow
+        }
+    }
+    $ErrorActionPreference = $oldEAP
+} else {
+    Write-Host "    -- No tools/ directory found" -ForegroundColor DarkGray
+}
+
+# --- Step 6: Set up auto-permissions via shell alias ---
 Write-Host ""
 Write-Host "  [Bonus] Setting up auto-permissions..." -ForegroundColor Yellow
 

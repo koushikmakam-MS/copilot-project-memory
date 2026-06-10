@@ -19,3 +19,11 @@ Thumbs.db
 
 # Auto-generated project memory export (optional — remove this line to commit it for teammates)
 .github/instructions/project-memory.instructions.md
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.egg-info/
+build/
+dist/
+*.egg

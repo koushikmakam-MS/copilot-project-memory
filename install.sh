@@ -110,7 +110,7 @@ EOF
 echo "    ✅ Created project template"
 
 # --- Step 4: Install master instructions ---
-echo "  [4/4] Installing master instructions..."
+echo "  [4/5] Installing master instructions..."
 
 # Try to read from co-located file first
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -177,7 +177,45 @@ echo ""
 echo "  Memory location:  $MEMORY_DIR"
 echo "  Instructions:     $INSTRUCTIONS_FILE"
 
-# --- Step 5: Set up auto-permissions ---
+# --- Step 5: Install bundled tools ---
+echo "  [5/5] Installing bundled tools..."
+
+TOOLS_DIR="$SCRIPT_DIR/tools"
+if [ -d "$TOOLS_DIR" ]; then
+    FOUND_TOOLS=0
+    for tool_dir in "$TOOLS_DIR"/*/; do
+        if [ -f "${tool_dir}pyproject.toml" ]; then
+            FOUND_TOOLS=1
+            tool_name=$(basename "$tool_dir")
+            printf "    Installing %s..." "$tool_name"
+
+            if command -v pip3 &>/dev/null; then
+                PIP_CMD="pip3"
+            elif command -v pip &>/dev/null; then
+                PIP_CMD="pip"
+            else
+                PIP_CMD=""
+            fi
+
+            if [ -n "$PIP_CMD" ]; then
+                if $PIP_CMD install --quiet "$tool_dir" 2>/dev/null; then
+                    echo " OK"
+                else
+                    echo " WARN (check: pip install $tool_dir)"
+                fi
+            else
+                echo " SKIP (pip not found)"
+            fi
+        fi
+    done
+    if [ "$FOUND_TOOLS" -eq 0 ]; then
+        echo "    -- No tools with pyproject.toml found"
+    fi
+else
+    echo "    -- No tools/ directory found"
+fi
+
+# --- Step 6: Set up auto-permissions ---
 echo ""
 echo "  [Bonus] Setting up auto-permissions..."
 
