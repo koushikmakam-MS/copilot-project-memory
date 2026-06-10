@@ -1170,12 +1170,29 @@ Status: ✅ PASSED | ❌ FAILED at step [id] | ⚠️ PARTIAL (N/M steps)
 ═══════════════════════
 ```
 
-#### Phase 4: VALIDATE (automatic — like rubber-duck for pipelines)
+#### Phase 4: VALIDATE (automatic — two-layer verification)
 
-**After completing Phase 3 (REPORT), you MUST run a validation pass.** This is NOT optional.
-This works exactly like the rubber-duck agent — a separate, independent review of your own work.
+**After completing Phase 3 (REPORT), you MUST run validation.** This is NOT optional.
+Validation has TWO layers — code verification first, then AI verification.
 
-**How to validate:**
+##### Phase 4a: CODE VERIFICATION (deterministic)
+
+Run the `aipipeline` tool to verify all postconditions from the stored plan:
+
+```
+aipipeline verify pipelines/active-plan.yaml
+```
+
+This deterministically checks every pre/postcondition in the plan against the actual filesystem and environment.
+- If verification **PASSES** → proceed to Phase 4b
+- If verification **FAILS** → fix the failing steps FIRST, then re-run `aipipeline verify`
+- Do NOT skip this step. Code verification catches objective failures (missing files, wrong exit codes) that AI review cannot.
+
+**IMPORTANT:** You run this via the powershell/bash tool silently — the user sees the result in the pipeline report, not the raw command.
+
+##### Phase 4b: AI VERIFICATION (rubber-duck agent)
+
+After code verification passes, call the **rubber-duck agent** for subjective/structural review:
 Call the **rubber-duck agent** (via the `task` tool with `agent_type: "rubber-duck"`) with this prompt:
 
 ```
@@ -1236,11 +1253,11 @@ For any ❌, specify:
 ```
 
 **Why this works:**
-- The validator is a SEPARATE agent call (structural, like rubber-duck)
-- It independently reviews the execution — catches blind spots
-- It checks against the STORED PLAN FILE, not just the output — detects skipped steps
-- The main agent MUST act on findings — not just acknowledge them
-- Combined with the structured format, this gives ~95% compliance
+- **Layer 1 (code):** `aipipeline verify` deterministically checks postconditions — no AI judgment, no hallucination, pass/fail based on real filesystem state
+- **Layer 2 (AI):** The rubber-duck agent catches structural issues, missing steps, and subjective quality problems that code can't evaluate
+- Both layers check against the STORED PLAN FILE — detects skipped steps
+- The main agent MUST act on findings from EITHER layer — not just acknowledge them
+- Combined with the structured format, this gives ~98% compliance
 
 ---
 
@@ -1374,9 +1391,11 @@ The pipeline protocol has **three enforcement layers** that generic instructions
 2. **User approval gate** — The user reviews and approves the plan before anything runs.
    The approved plan becomes a contract. No execution without explicit approval.
 
-3. **Validator agent** — A separate rubber-duck agent independently compares the execution
-   against the stored plan file. Catches skipped steps, fake evidence, and missing work.
-   The main agent must fix any gaps found.
+3. **Code verification** — `aipipeline verify` deterministically checks every postcondition
+   against the real filesystem. No AI judgment — pass/fail based on actual state.
+
+4. **Validator agent** — A separate rubber-duck agent independently compares the execution
+   against the stored plan file. Catches structural issues, missing steps, and quality problems.
 
 > Not 100% guaranteed — prompts are probabilistic. But non-compliance becomes **obvious**
 > rather than **silent**. That's the key shift: from "hope the AI followed all steps" to
