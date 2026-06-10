@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-One-time install. Works forever. No runtime, no dependencies — just a prompt.
+One-time install. Works forever. No runtime, no dependencies — just a prompt + bundled tools.
 
 ---
 
@@ -23,14 +23,19 @@ Every time you open Copilot CLI in a project folder, it **remembers everything**
 | 🔀 **Named Sessions** | Work on multiple features — switch context like branches |
 | 🌍 **Global Rules** | Personal defaults that apply across ALL projects |
 | 📊 **Auto-Learning** | Detects repeated corrections → suggests saving as rules |
-| 🔄 **Pipeline Executor** | Deterministic step-by-step task execution with verification |
+| 🔄 **Pipeline Executor** | Deterministic step-by-step task execution with two-layer verification |
 
 ### How It Works
 
-It's **not a runtime or extension** — it's a **prompt-based skill**. A single `copilot-instructions.md` file teaches Copilot the memory system. Copilot reads/writes YAML files in `~/.copilot/project-memory/` to persist memory across sessions.
+It's **not a runtime or extension** — it's a **prompt-based skill** backed by **bundled Python tools**. A single `copilot-instructions.md` file teaches Copilot the memory system. Copilot reads/writes YAML files in `~/.copilot/project-memory/` to persist memory across sessions.
+
+For complex tasks, the **Pipeline Executor** provides two-layer verification:
+- **Layer 1 (Code):** `aipipeline verify` deterministically checks postconditions — no AI judgment, pass/fail based on real filesystem state
+- **Layer 2 (AI):** A rubber-duck agent independently reviews compliance against the stored plan
 
 ```
 You (in any project) → Copilot loads your memory → applies your rules → saves what it learns
+                      → Pipeline tasks get code + AI verification automatically
 ```
 
 ---
@@ -95,8 +100,11 @@ curl -fsSL https://raw.githubusercontent.com/koushikmakam-MS/copilot-project-mem
 ### What the installer does:
 1. Creates `~/.copilot/project-memory/` with global and template folders
 2. Installs the master prompt into `~/.copilot/copilot-instructions.md`
-3. Adds a `ghc` shell alias (auto-grants memory path access)
-4. Seeds file permissions for the current project directory
+3. **Auto-discovers and installs all tools from `tools/`** (e.g., `aipipeline`)
+4. Adds a `ghc` shell alias (auto-grants memory path access)
+5. Seeds file permissions for the current project directory
+
+> **Prerequisites:** Python 3.10+ with pip (for bundled tools). The memory system itself works without Python — tools are optional but recommended.
 
 > **That's it.** Open Copilot in any project folder and it just works.
 
@@ -194,7 +202,7 @@ Auto-save writes to the **active named session** automatically. `:resume` picks 
 
 #### Pipeline Executor (Deterministic Task Execution)
 
-Force Copilot to decompose, verify, and audit every step of complex tasks:
+Force Copilot to decompose, verify, and audit every step of complex tasks — with **two-layer verification**:
 
 ```
 :pipeline <task>          — Run a task with verified step-by-step execution
@@ -206,11 +214,15 @@ Force Copilot to decompose, verify, and audit every step of complex tasks:
 ```
 
 **How it works:**
-1. AI decomposes your task into atomic steps with pre/post checks
-2. Plan is saved to disk and shown as a visual workflow
-3. You approve, modify, or cancel before anything runs
-4. Each step executes with evidence-based verification
-5. A validator agent independently checks compliance against the approved plan
+1. **DECOMPOSE** — AI breaks your task into atomic steps with pre/post checks
+2. **STORE & APPROVE** — Plan saved to disk as YAML, shown as visual workflow, you approve
+3. **EXECUTE** — Each step runs with evidence-based verification
+4. **VERIFY (two layers):**
+   - **Code verification:** Copilot internally runs `aipipeline verify` — deterministic postcondition checking against the real filesystem (no AI judgment)
+   - **AI verification:** A rubber-duck agent independently checks compliance against the approved plan
+5. **REPORT** — Summary table with pass/fail status and evidence
+
+**Why two layers?** AI alone is ~60% reliable at following complex instructions. Code verification catches objective failures (missing files, wrong exit codes). AI verification catches structural issues (missing steps, wrong order). Combined: ~98% compliance.
 
 Auto-activates for multi-step tasks (3+ steps) or trigger manually with `:pipeline`.
 
@@ -351,6 +363,54 @@ Everything lives **outside your repos** in `~/.copilot/project-memory/`:
 
 ---
 
+## 🧰 Bundled Tools
+
+Tools live in the `tools/` directory and are auto-installed by the installer. Each tool is a standalone Python package with its own `pyproject.toml`.
+
+```
+tools/
+└── aipipeline/                     # Pipeline verification engine
+    ├── pyproject.toml
+    ├── aipipeline/
+    │   ├── cli.py                  # CLI: aipipeline run|verify|show
+    │   ├── engine.py               # Deterministic execution loop
+    │   ├── models.py               # Pydantic models (Step, DAG, Audit)
+    │   ├── checks.py               # Postcondition evaluator
+    │   ├── loader.py               # YAML plan loader
+    │   └── prompts/
+    ├── tests/                      # 18 tests
+    └── examples/
+```
+
+### Adding a New Tool
+
+1. Create a folder under `tools/` with a `pyproject.toml`
+2. Follow the [Tool Development Guide](docs/TOOL_DEVELOPMENT.md) for requirements and patterns
+3. Hook it into `copilot-instructions.md` using one of the 4 integration patterns
+4. Re-run the installer — it auto-discovers and installs all tools
+
+```bash
+# Example: adding a hypothetical "ai-linter" tool
+mkdir tools/ai-linter
+# Add pyproject.toml, source code, tests...
+# Add integration section to copilot-instructions.md
+.\install.ps1   # Installer will pick it up automatically
+```
+
+> 📖 See [docs/TOOL_DEVELOPMENT.md](docs/TOOL_DEVELOPMENT.md) for the full spec: CLI requirements, integration patterns, instruction placement, testing checklist, and examples.
+
+### aipipeline CLI
+
+The bundled pipeline verification engine. Copilot calls this internally — **you never need to run it manually**.
+
+```bash
+aipipeline verify <plan.yaml>   # Check postconditions (no execution)
+aipipeline run <plan.yaml>      # Execute pipeline with shell commands
+aipipeline show <plan.yaml>     # Display plan as workflow diagram
+```
+
+---
+
 ## 🌍 Global Rules
 
 Some rules should apply everywhere. You can set them explicitly:
@@ -406,10 +466,10 @@ This generates a `.github/copilot-instructions.md` file in your repo with your p
 A: No. Everything lives in `~/.copilot/project-memory/`. Zero repo pollution. Only `:export team` writes to your repo (intentionally).
 
 **Q: Do I need Node.js or any runtime?**
-A: No. It's just files + a prompt. No build step, no dependencies, no package manager.
+A: Python 3.10+ with pip is recommended for bundled tools (like `aipipeline`). The memory system itself works without Python — tools add deterministic verification for complex tasks.
 
 **Q: How does it work without code?**
-A: The `copilot-instructions.md` file is a prompt that teaches Copilot the memory system. Copilot itself reads/writes the YAML files — no middleware needed.
+A: The `copilot-instructions.md` file is a prompt that teaches Copilot the memory system. Copilot itself reads/writes the YAML files — no middleware needed. Bundled tools in `tools/` provide optional code-based verification.
 
 **Q: Can my team use this?**
 A: Use `:export team` to generate a `.github/copilot-instructions.md` — teammates get your rules automatically, no install needed.
