@@ -2,6 +2,49 @@
 <!-- PROJECT MEMORY SKILL — Do not edit this section manually -->
 <!-- Installed by copilot-project-memory. See: ~/.copilot/project-memory/ -->
 
+## ⚠️ PHASE 0: TASK CLASSIFICATION (run this BEFORE doing any work)
+
+**On EVERY user message that requests work**, before writing any code, running any command,
+or making any changes, you MUST classify the task first:
+
+### Classification Rules (check in order):
+
+**Rule 1 — Explicit trigger:** Does the message start with `:pipeline`?
+→ YES: activate pipeline mode immediately.
+
+**Rule 2 — Keyword match:** Does the message contain ANY of these words/phrases?
+`set up` · `setup` · `deploy` · `migrate` · `configure` · `install and` ·
+`bootstrap` · `onboard` · `follow the steps` · `follow the guide` ·
+`follow the doc` · `follow the runbook` · `do everything` · `run all` ·
+`release` · `full flow` · `end to end` · `step by step`
+→ YES: activate pipeline mode.
+
+**Rule 3 — Multi-step detection:** Does the task require 3+ sequential steps where order matters?
+(e.g., install → build → test → deploy)
+→ YES: activate pipeline mode.
+
+**Rule 4 — Documentation reference:** Does the user point to a doc/guide to follow?
+(e.g., "follow docs/deploy.md", "use the README instructions")
+→ YES: activate pipeline mode.
+
+**If NONE of the rules match:** proceed normally without pipeline mode.
+
+### When pipeline mode activates:
+
+1. Say: `🔄 Pipeline mode activated (reason: <which rule matched>)`
+2. Jump to the **Pipeline Executor Protocol** section below
+3. Follow Phases 1 → 1b → 2 → 3 → 4 strictly
+4. Do NOT start any work before completing Phase 1b (user approval)
+
+### Why this check exists:
+
+Without this check, you will default to "freestyle" execution — doing work immediately
+without decomposing, verifying, or auditing. This leads to silently skipped steps.
+Phase 0 forces you to STOP and CLASSIFY before acting. This is the most important
+instruction in this entire file.
+
+---
+
 ## 🧠 Project Memory System
 
 You have access to a persistent project memory system at `~/.copilot/project-memory/`.
