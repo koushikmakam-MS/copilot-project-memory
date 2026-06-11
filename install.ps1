@@ -144,15 +144,21 @@ extensions: []
 Write-Host "    ✅ Created project template" -ForegroundColor Green
 
 # --- Step 4: Install master instructions ---
-Write-Host "  [4/5] Installing master instructions..." -ForegroundColor Yellow
+Write-Host "  [4/6] Installing master instructions..." -ForegroundColor Yellow
 
-$masterPrompt = Get-Content -Path (Join-Path $PSScriptRoot "copilot-instructions.md") -Raw -ErrorAction SilentlyContinue
+# Prefer the slim v2 prompt if available, fall back to legacy
+$masterPromptPath = Join-Path $PSScriptRoot "prompts" "copilot-instructions-slim.md"
+if (-not (Test-Path $masterPromptPath)) {
+    $masterPromptPath = Join-Path $PSScriptRoot "copilot-instructions.md"
+}
+$masterPrompt = Get-Content -Path $masterPromptPath -Raw -ErrorAction SilentlyContinue
 
 if (-not $masterPrompt) {
-    Write-Host "    !! copilot-instructions.md not found in $PSScriptRoot" -ForegroundColor Red
+    Write-Host "    !! No instructions file found in $PSScriptRoot" -ForegroundColor Red
     Write-Host "       Run installer from the copilot-project-memory repo directory." -ForegroundColor White
     exit 1
 }
+Write-Host "    Using: $(Split-Path $masterPromptPath -Leaf)" -ForegroundColor DarkGray
 
 # Check if instructions file already exists and has memory skill
 if (Test-Path $instructionsFile) {
@@ -184,7 +190,7 @@ Write-Host "  Memory location:  $memoryDir" -ForegroundColor White
 Write-Host "  Instructions:     $instructionsFile" -ForegroundColor White
 
 # --- Step 5: Install bundled tools ---
-Write-Host "  [5/5] Installing bundled tools..." -ForegroundColor Yellow
+Write-Host "  [5/6] Installing bundled tools..." -ForegroundColor Yellow
 
 $toolsDir = Join-Path $PSScriptRoot "tools"
 if (Test-Path $toolsDir) {
@@ -210,6 +216,45 @@ if (Test-Path $toolsDir) {
             Write-Host " FAILED (Python/pip required)" -ForegroundColor Yellow
         }
     }
+    # Whitelist installed tool executables with Windows Defender Controlled Folder Access
+    Write-Host ""
+    Write-Host "  [5b] Checking Windows Defender Controlled Folder Access..." -ForegroundColor Yellow
+
+    $cfaEnabled = $false
+    try {
+        $cfaStatus = (Get-MpPreference).EnableControlledFolderAccess
+        $cfaEnabled = ($cfaStatus -eq 1 -or $cfaStatus -eq "Enabled")
+    } catch {
+        # Get-MpPreference not available (e.g., Windows Server Core)
+    }
+
+    if ($cfaEnabled) {
+        foreach ($tool in $toolDirs) {
+            $toolName = $tool.Name
+            # Find the installed exe in Python Scripts
+            $pythonScripts = Join-Path (Split-Path (Get-Command python -ErrorAction SilentlyContinue).Source) "Scripts"
+            $exePath = Join-Path $pythonScripts "$toolName.exe"
+
+            if (Test-Path $exePath) {
+                try {
+                    $allowed = (Get-MpPreference).ControlledFolderAccessAllowedApplications
+                    if ($allowed -and ($allowed -contains $exePath)) {
+                        Write-Host "    ⏭️  $toolName.exe already whitelisted" -ForegroundColor DarkGray
+                    } else {
+                        Add-MpPreference -ControlledFolderAccessAllowedApplications $exePath
+                        Write-Host "    ✅ Whitelisted $exePath in Controlled Folder Access" -ForegroundColor Green
+                    }
+                } catch {
+                    Write-Host "    ⚠️  Could not whitelist $toolName.exe — run as Admin or whitelist manually:" -ForegroundColor Yellow
+                    Write-Host "       Windows Security → Virus & threat protection → Ransomware protection" -ForegroundColor White
+                    Write-Host "       → Allow an app through Controlled folder access → Add: $exePath" -ForegroundColor White
+                }
+            }
+        }
+    } else {
+        Write-Host "    ⏭️  Controlled Folder Access not enabled — no whitelist needed" -ForegroundColor DarkGray
+    }
+
     $ErrorActionPreference = $oldEAP
 } else {
     Write-Host "    -- No tools/ directory found" -ForegroundColor DarkGray
@@ -217,17 +262,17 @@ if (Test-Path $toolsDir) {
 
 # --- Step 6: Set up auto-permissions via shell alias ---
 Write-Host ""
-Write-Host "  [Bonus] Setting up auto-permissions..." -ForegroundColor Yellow
+Write-Host "  [6/6] Setting up shell integration..." -ForegroundColor Yellow
 
-# Approach: Add a PowerShell function that wraps 'gh copilot' with --add-dir
-# This ensures the memory path is ALWAYS in allowed directories, for ANY project.
+# Add a PowerShell alias that ensures memory path is accessible.
+# We pre-seed permissions-config.json (Step 6b below) so `gh copilot` already
+# has access. The alias is just a convenience shortcut.
 $profilePath = $PROFILE.CurrentUserAllHosts
 $aliasBlock = @"
 
-# --- Copilot Project Memory: auto-grant memory path access ---
+# --- Copilot Project Memory: convenience alias ---
 function Invoke-CopilotWithMemory {
-    `$memDir = Join-Path `$HOME ".copilot" "project-memory"
-    gh copilot -- --add-dir `$memDir @args
+    gh copilot @args
 }
 Set-Alias -Name ghc -Value Invoke-CopilotWithMemory -Scope Global
 # --- End Copilot Project Memory ---
@@ -247,7 +292,7 @@ try {
     }
 } catch {
     Write-Host "    ⚠️  Could not update profile — add manually:" -ForegroundColor Yellow
-    Write-Host "       function ghc { gh copilot -- --add-dir `"$memoryDir`" @args }" -ForegroundColor White
+    Write-Host "       Set-Alias -Name ghc -Value { gh copilot @args } -Scope Global" -ForegroundColor White
 }
 
 # Also seed permissions-config.json for the current project (if run from a project dir)

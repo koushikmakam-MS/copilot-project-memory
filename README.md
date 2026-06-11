@@ -4,7 +4,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-One-time install. Works forever. No runtime, no dependencies — just a prompt + bundled tools.
+One-time install. Works forever. No runtime, no dependencies — just a slim prompt + bundled CLI tools.
 
 ---
 
@@ -22,21 +22,27 @@ Every time you open Copilot CLI in a project folder, it **remembers everything**
 | 🕐 **Session History** | Resume where you left off or start fresh |
 | 🔀 **Named Sessions** | Work on multiple features — switch context like branches |
 | 🌍 **Global Rules** | Personal defaults that apply across ALL projects |
-| 📊 **Auto-Learning** | Detects repeated corrections → suggests saving as rules |
-| 🔄 **Pipeline Executor** | Deterministic step-by-step task execution with two-layer verification |
+| 🔄 **Pipeline Executor** | Deterministic step-by-step task execution with verification |
 
-### How It Works
+### Architecture (v2)
 
-It's **not a runtime or extension** — it's a **prompt-based skill** backed by **bundled Python tools**. A single `copilot-instructions.md` file teaches Copilot the memory system. Copilot reads/writes YAML files in `~/.copilot/project-memory/` to persist memory across sessions.
-
-For complex tasks, the **Pipeline Executor** provides two-layer verification:
-- **Layer 1 (Code):** `aipipeline verify` deterministically checks postconditions — no AI judgment, pass/fail based on real filesystem state
-- **Layer 2 (AI):** A rubber-duck agent independently reviews compliance against the stored plan
+**Hybrid approach — simple + reliable:**
 
 ```
-You (in any project) → Copilot loads your memory → applies your rules → saves what it learns
-                      → Pipeline tasks get code + AI verification automatically
+Simple ops (fast, AI handles inline)     Complex ops (CLI tools, deterministic)
+┌─────────────────────────┐             ┌────────────────────────────┐
+│ :remember, :forget      │             │ copilot-memory verify      │
+│ :rules, :prefs, :status │  AI reads/  │ copilot-memory compact     │
+│ :context, :resume       │  writes     │ copilot-memory init        │
+│ session auto-save       │  YAML       │ copilot-memory export      │
+│ :help                   │  directly   │ copilot-memory schema-fix  │
+└─────────────────────────┘             │ aipipeline run/verify/show │
+                                        └────────────────────────────┘
 ```
+
+- **Slim prompt (~800 tokens)** tells the AI what tools exist and how to handle simple commands
+- **`copilot-memory` CLI** handles integrity checks, storage caps, schema validation — with Pydantic models and atomic writes
+- **`aipipeline` CLI** handles deterministic pipeline execution with hash-chained audit trails
 
 ---
 
@@ -99,12 +105,15 @@ curl -fsSL https://raw.githubusercontent.com/koushikmakam-MS/copilot-project-mem
 
 ### What the installer does:
 1. Creates `~/.copilot/project-memory/` with global and template folders
-2. Installs the master prompt into `~/.copilot/copilot-instructions.md`
-3. **Auto-discovers and installs all tools from `tools/`** (e.g., `aipipeline`)
+2. Installs the **slim prompt** into `~/.copilot/copilot-instructions.md` (~800 tokens)
+3. **Auto-discovers and installs all tools from `tools/`** (e.g., `aipipeline`, `copilot-memory`)
 4. Adds a `ghc` shell alias (auto-grants memory path access)
 5. Seeds file permissions for the current project directory
+6. **Auto-whitelists tools** with Windows Defender Controlled Folder Access (if enabled)
 
 > **Prerequisites:** Python 3.10+ with pip (for bundled tools). The memory system itself works without Python — tools are optional but recommended.
+
+> **Windows Defender note:** If you use Controlled Folder Access, the installer auto-whitelists tools. If it can't (needs admin), run `scripts/fix-windows-defender.ps1` as Administrator.
 
 > **That's it.** Open Copilot in any project folder and it just works.
 
@@ -369,35 +378,47 @@ Tools live in the `tools/` directory and are auto-installed by the installer. Ea
 
 ```
 tools/
-└── aipipeline/                     # Pipeline verification engine
+├── aipipeline/                     # Pipeline verification engine
+│   ├── pyproject.toml
+│   ├── aipipeline/
+│   │   ├── cli.py                  # CLI: aipipeline run|verify|show
+│   │   ├── engine.py               # Deterministic execution loop
+│   │   ├── models.py               # Pydantic models (Step, DAG, Audit)
+│   │   ├── checks.py               # Postcondition evaluator
+│   │   └── loader.py               # YAML plan loader
+│   ├── tests/                      # 18 tests
+│   └── examples/                   # Example pipeline YAML files
+│
+└── copilot-memory/                 # Memory management CLI (NEW in v2)
     ├── pyproject.toml
-    ├── aipipeline/
-    │   ├── cli.py                  # CLI: aipipeline run|verify|show
-    │   ├── engine.py               # Deterministic execution loop
-    │   ├── models.py               # Pydantic models (Step, DAG, Audit)
-    │   ├── checks.py               # Postcondition evaluator
-    │   ├── loader.py               # YAML plan loader
-    │   └── prompts/
-    ├── tests/                      # 18 tests
-    └── examples/
+    ├── copilot_memory/
+    │   ├── cli.py                  # CLI: 6 commands (status, verify, compact, init, schema-fix, export)
+    │   ├── models.py               # Pydantic schemas (Rule, Context, Session)
+    │   └── store.py                # File I/O with validation, atomic writes, BOM handling
+    └── tests/                      # 56 tests (models, store, CLI integration)
 ```
 
-### Adding a New Tool
+### copilot-memory CLI (New in v2)
 
-1. Create a folder under `tools/` with a `pyproject.toml`
-2. Follow the [Tool Development Guide](docs/TOOL_DEVELOPMENT.md) for requirements and patterns
-3. Hook it into `copilot-instructions.md` using one of the 4 integration patterns
-4. Re-run the installer — it auto-discovers and installs all tools
+Deterministic memory management — the AI calls this for complex operations:
 
 ```bash
-# Example: adding a hypothetical "ai-linter" tool
-mkdir tools/ai-linter
-# Add pyproject.toml, source code, tests...
-# Add integration section to copilot-instructions.md
-.\install.ps1   # Installer will pick it up automatically
+copilot-memory status              # Show project memory overview
+copilot-memory verify              # Check integrity of all memory files
+copilot-memory verify --fix        # Auto-fix integrity issues (dangling sessions, ID mismatches)
+copilot-memory compact             # Enforce storage caps, prune stale data
+copilot-memory init                # Initialize memory for a new project
+copilot-memory schema-fix          # Add missing schema_version headers to YAML files
+copilot-memory export team         # Export shared rules to .github/copilot-instructions.md
+copilot-memory export stdout       # Export to stdout (for piping)
 ```
 
-> 📖 See [docs/TOOL_DEVELOPMENT.md](docs/TOOL_DEVELOPMENT.md) for the full spec: CLI requirements, integration patterns, instruction placement, testing checklist, and examples.
+**What it handles that the AI doesn't:**
+- **Schema validation** — Pydantic models enforce correct YAML structure
+- **Atomic writes** — tmp file + rename prevents corruption on crash
+- **BOM handling** — Reads UTF-8 with or without BOM (PowerShell writes BOM)
+- **Session integrity** — Detects dangling pointers, ID mismatches, empty sessions
+- **Storage caps** — Enforces hard limits on sessions, hotspots, error patterns
 
 ### aipipeline CLI
 
@@ -469,7 +490,7 @@ A: No. Everything lives in `~/.copilot/project-memory/`. Zero repo pollution. On
 A: Python 3.10+ with pip is recommended for bundled tools (like `aipipeline`). The memory system itself works without Python — tools add deterministic verification for complex tasks.
 
 **Q: How does it work without code?**
-A: The `copilot-instructions.md` file is a prompt that teaches Copilot the memory system. Copilot itself reads/writes the YAML files — no middleware needed. Bundled tools in `tools/` provide optional code-based verification.
+A: The slim prompt (~800 tokens) tells Copilot the memory system exists and how to use it. Simple ops (`:remember`, `:rules`) are handled by the AI directly reading/writing YAML. Complex ops (`:verify`, `:compact`) delegate to the `copilot-memory` CLI for deterministic execution. Pipeline verification uses the `aipipeline` CLI.
 
 **Q: Can my team use this?**
 A: Use `:export team` to generate a `.github/copilot-instructions.md` — teammates get your rules automatically, no install needed.
