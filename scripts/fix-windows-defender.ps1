@@ -6,11 +6,26 @@
 
 $ErrorActionPreference = "Stop"
 
+$pythonBase = (Get-Command python -ErrorAction SilentlyContinue).Source | Split-Path
+if (-not $pythonBase) { $pythonBase = "$env:LOCALAPPDATA\Programs\Python\Python311" }
+$scriptsDir = Join-Path $pythonBase "Scripts"
+
 $tools = @(
-    "C:\Users\koushikmakam\AppData\Local\Programs\Python\Python311\Scripts\aipipeline.exe",
-    "C:\Users\koushikmakam\AppData\Local\Programs\Python\Python311\Scripts\copilot-memory.exe",
-    "C:\Users\koushikmakam\AppData\Local\Programs\Python\Python311\python.exe"
+    # Python and CLI tools
+    (Join-Path $pythonBase "python.exe"),
+    (Join-Path $scriptsDir "aipipeline.exe"),
+    (Join-Path $scriptsDir "copilot-memory.exe"),
+    # Terminal hosts (CFA blocks these when CLI writes to protected dirs)
+    "C:\Windows\System32\conhost.exe",
+    "C:\Windows\System32\cmd.exe"
 )
+
+# Also find Windows Terminal executables
+$wtPaths = Get-ChildItem "C:\Program Files\WindowsApps\Microsoft.WindowsTerminal*" -Directory -ErrorAction SilentlyContinue
+foreach ($wt in $wtPaths) {
+    $exes = Get-ChildItem $wt.FullName -Filter "*.exe" -ErrorAction SilentlyContinue
+    foreach ($exe in $exes) { $tools += $exe.FullName }
+}
 
 # Check if running as admin
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
