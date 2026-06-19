@@ -5,7 +5,7 @@
 If you discover a security vulnerability in this project, please report it responsibly:
 
 1. **Do NOT open a public issue** for security vulnerabilities
-2. Email the maintainer or use [GitHub's private vulnerability reporting](https://github.com/koushikmakam-MS/copilot-project-memory/security/advisories/new)
+2. Email the maintainer or use [GitHub's private vulnerability reporting](https://github.com/KoushikMakam/copilot-project-memory/security/advisories/new)
 3. Include a description of the vulnerability and steps to reproduce
 
 ## Security Considerations

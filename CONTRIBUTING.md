@@ -7,7 +7,7 @@ This is a **prompt-only** system — no runtime, no dependencies, just structure
 ## How to Contribute
 
 ### 🐛 Report Issues
-- Open an [issue](https://github.com/koushikmakam-MS/copilot-project-memory/issues) with a clear description
+- Open an [issue](https://github.com/KoushikMakam/copilot-project-memory/issues) with a clear description
 - Include your OS (Windows/macOS/Linux) and Copilot CLI version
 - Include what you expected vs. what happened
 

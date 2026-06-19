@@ -4,7 +4,7 @@
 # Run once on any machine — works forever after.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/koushikmakam-MS/copilot-project-memory/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/KoushikMakam/copilot-project-memory/main/install.sh | bash
 #
 set -euo pipefail
 
@@ -145,7 +145,7 @@ On clean exit set status "closed"; unclean exits are detected and marked "abando
 - :remember <instruction> — Quick-add a rule
 - :forget <rule-id> — Remove a rule
 
-See full command reference at: https://github.com/koushikmakam-MS/copilot-project-memory
+See full command reference at: https://github.com/KoushikMakam/copilot-project-memory
 
 <!-- END PROJECT MEMORY SKILL -->
 PROMPT
