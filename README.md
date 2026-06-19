@@ -84,23 +84,23 @@ Next time you open Copilot in that project — **it already knows your rules, yo
 ### Windows (PowerShell)
 ```powershell
 # Clone and install:
-git clone https://github.com/koushikmakam-MS/copilot-project-memory.git
+git clone https://github.com/KoushikMakam/copilot-project-memory.git
 cd copilot-project-memory
 .\install.ps1
 
 # Or one-liner remote install:
-irm https://raw.githubusercontent.com/koushikmakam-MS/copilot-project-memory/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/KoushikMakam/copilot-project-memory/main/install.ps1 | iex
 ```
 
 ### macOS / Linux
 ```bash
 # Clone and install:
-git clone https://github.com/koushikmakam-MS/copilot-project-memory.git
+git clone https://github.com/KoushikMakam/copilot-project-memory.git
 cd copilot-project-memory
 bash install.sh
 
 # Or one-liner remote install:
-curl -fsSL https://raw.githubusercontent.com/koushikmakam-MS/copilot-project-memory/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/KoushikMakam/copilot-project-memory/main/install.sh | bash
 ```
 
 ### What the installer does:

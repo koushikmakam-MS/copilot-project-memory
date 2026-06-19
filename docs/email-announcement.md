@@ -174,7 +174,7 @@ cd copilot-project-memory && git pull && .\install.ps1 -Force
 
 **First time?**
 ```powershell
-git clone https://github.com/koushikmakam-MS/copilot-project-memory.git
+git clone https://github.com/KoushikMakam/copilot-project-memory.git
 cd copilot-project-memory
 .\install.ps1
 ```
@@ -195,7 +195,7 @@ The installer now auto-installs bundled tools (like `aipipeline`). Python 3.10+ 
 
 ---
 
-Repo: https://github.com/koushikmakam-MS/copilot-project-memory
+Repo: https://github.com/KoushikMakam/copilot-project-memory
 
 If you try it, would love your feedback — especially on the pipeline feature. Does it actually catch skipped steps for you? 👍
 

@@ -15,7 +15,7 @@
 #>
 
 param(
-    [string]$RepoOwner = "koushikmakam-MS",
+    [string]$RepoOwner = "KoushikMakam",
     [string]$RepoName  = "copilot-project-memory"
 )
 

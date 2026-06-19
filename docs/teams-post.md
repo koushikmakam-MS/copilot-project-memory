@@ -88,7 +88,7 @@ cd copilot-project-memory && git pull && .\install.ps1 -Force
 
 New user?
 ```
-git clone https://github.com/koushikmakam-MS/copilot-project-memory.git
+git clone https://github.com/KoushikMakam/copilot-project-memory.git
 cd copilot-project-memory && .\install.ps1
 ```
 
@@ -115,7 +115,7 @@ cd copilot-project-memory && .\install.ps1
 ✅ **Extensible** — add tools to `tools/` directory, installer auto-discovers them
 ✅ **Open source** — contribute new tools with the [Tool Development Guide](docs/TOOL_DEVELOPMENT.md)
 
-🔗 [PR #1](https://github.com/koushikmakam-MS/copilot-project-memory/pull/1) | 📂 [Repo](https://github.com/koushikmakam-MS/copilot-project-memory)
+🔗 [PR #1](https://github.com/KoushikMakam/copilot-project-memory/pull/1) | 📂 [Repo](https://github.com/KoushikMakam/copilot-project-memory)
 
 ---
 

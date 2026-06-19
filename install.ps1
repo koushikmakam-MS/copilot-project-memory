@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
   One-time installer for Copilot Project Memory skill.
   Run once on any machine — works forever after.
@@ -10,7 +10,7 @@
   3. Master copilot-instructions.md that teaches Copilot the memory system
 
 .EXAMPLE
-  irm https://raw.githubusercontent.com/koushikmakam-MS/copilot-project-memory/main/install.ps1 | iex
+  irm https://raw.githubusercontent.com/KoushikMakam/copilot-project-memory/main/install.ps1 | iex
 #>
 
 param(
