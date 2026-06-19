@@ -36,19 +36,27 @@ jobs:
           $status = git status --porcelain metrics/ docs/ADOPTION.md
           if ($status) {
             $branch = "automated/update-metrics"
-            # Delete remote branch if it exists to avoid checkout conflicts
+            # Check if branch already exists on remote
             $remoteBranch = git ls-remote --heads origin $branch 2>$null
             if ($remoteBranch) {
-              git push origin --delete $branch 2>$null
+              # Branch exists — stash changes, checkout, apply, and push
+              git stash
+              git fetch origin $branch
+              git checkout $branch
+              git reset --hard origin/$branch
+              git checkout stash -- metrics/traffic-history.json docs/ADOPTION.md
+              git add metrics/traffic-history.json docs/ADOPTION.md
+              git commit -m "chore: update adoption metrics $(Get-Date -Format 'yyyy-MM-dd') [skip ci]"
+              git push origin $branch
+              Write-Host "Updated existing branch and PR"
+            } else {
+              # No branch — create new branch and PR
+              git checkout -b $branch
+              git commit -m "chore: update adoption metrics $(Get-Date -Format 'yyyy-MM-dd') [skip ci]"
+              git push origin $branch
+              gh pr create --title "chore: update adoption metrics" --body "Auto-generated weekly metrics update. Approve and merge when ready." --base master --head $branch
+              Write-Host "Created new PR"
             }
-            # Create fresh branch from current master with metrics changes
-            git checkout -b $branch
-            git commit -m "chore: update adoption metrics $(Get-Date -Format 'yyyy-MM-dd') [skip ci]"
-            git push origin $branch
-            # Create PR, approve it, and merge with admin bypass
-            gh pr create --title "chore: update adoption metrics" --body "Auto-generated weekly metrics update." --base master --head $branch
-            gh pr review $branch --approve
-            gh pr merge $branch --squash --admin --delete-branch
           } else {
             Write-Host "No changes to commit"
           }
