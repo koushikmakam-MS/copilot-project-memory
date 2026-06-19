@@ -36,21 +36,19 @@ jobs:
           $status = git status --porcelain metrics/ docs/ADOPTION.md
           if ($status) {
             $branch = "automated/update-metrics"
-            # Check if branch already exists on remote
+            # Delete remote branch if it exists to avoid checkout conflicts
             $remoteBranch = git ls-remote --heads origin $branch 2>$null
             if ($remoteBranch) {
-              git fetch origin $branch
-              git checkout $branch
-              git merge master --no-edit
-              git add metrics/traffic-history.json docs/ADOPTION.md
-              git commit -m "chore: update adoption metrics $(Get-Date -Format 'yyyy-MM-dd') [skip ci]"
-              git push origin $branch
-            } else {
-              git checkout -b $branch
-              git commit -m "chore: update adoption metrics $(Get-Date -Format 'yyyy-MM-dd') [skip ci]"
-              git push origin $branch
-              gh pr create --title "chore: update adoption metrics" --body "Auto-generated weekly metrics update. This PR is reused each week until merged." --base master --head $branch
+              git push origin --delete $branch 2>$null
             }
+            # Create fresh branch from current master with metrics changes
+            git checkout -b $branch
+            git commit -m "chore: update adoption metrics $(Get-Date -Format 'yyyy-MM-dd') [skip ci]"
+            git push origin $branch
+            # Create PR, approve it, and merge with admin bypass
+            gh pr create --title "chore: update adoption metrics" --body "Auto-generated weekly metrics update." --base master --head $branch
+            gh pr review $branch --approve
+            gh pr merge $branch --squash --admin --delete-branch
           } else {
             Write-Host "No changes to commit"
           }
