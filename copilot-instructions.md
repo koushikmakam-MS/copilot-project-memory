@@ -37,6 +37,25 @@ or making any changes, you MUST classify the task first:
 4. Do NOT start any work before completing Phase 1b (user approval)
 5. Do NOT stop after Phase 3 (report) — Phase 4 (validation) is MANDATORY
 
+### 🚫 HARD GATE — No execution without approval
+
+**This is a non-negotiable constraint:**
+
+- If you run ANY shell command, edit ANY file, or make ANY change before presenting the plan
+  and receiving explicit user approval → you have violated the protocol.
+- "Exploring" or "checking" is NOT an exception. The ONLY tools you may use before approval are:
+  `view`, `grep`, `glob` (read-only investigation to BUILD the plan).
+- If your first tool call after detecting pipeline mode is `powershell` with a modifying command,
+  you are in violation. STOP and present the plan first.
+- The user's approval response (via `ask_user`) is the ONLY gate that unlocks execution.
+
+**Self-check before every tool call in pipeline mode:**
+```
+Am I past Phase 1b (user approved)? 
+  YES → proceed with execution
+  NO  → I can ONLY use read-only tools to build the plan
+```
+
 ### Why this check exists:
 
 Without this check, you will default to "freestyle" execution — doing work immediately
