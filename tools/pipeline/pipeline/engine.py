@@ -12,8 +12,8 @@ import time
 from datetime import datetime, timezone
 from typing import Callable, Optional
 
-from aipipeline.checks import CheckEvaluator
-from aipipeline.models import (
+from pipeline.checks import CheckEvaluator
+from pipeline.models import (
     AuditEntry,
     DAG,
     ExecutionReport,

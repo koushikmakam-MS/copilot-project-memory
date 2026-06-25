@@ -1,9 +1,9 @@
 """CLI for the AI Pipeline Executor.
 
 Usage:
-  aipipeline run <plan.yaml>       Run a pipeline (shell executor)
-  aipipeline verify <plan.yaml>    Verify postconditions from a plan
-  aipipeline show <plan.yaml>      Show the plan as a workflow diagram
+  pipeline run <plan.yaml>       Run a pipeline (shell executor)
+  pipeline verify <plan.yaml>    Verify postconditions from a plan
+  pipeline show <plan.yaml>      Show the plan as a workflow diagram
 """
 
 from __future__ import annotations
@@ -16,10 +16,10 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-from aipipeline.checks import CheckEvaluator
-from aipipeline.engine import PipelineEngine
-from aipipeline.loader import load_dag
-from aipipeline.models import (
+from pipeline.checks import CheckEvaluator
+from pipeline.engine import PipelineEngine
+from pipeline.loader import load_dag
+from pipeline.models import (
     AuditEntry,
     DAG,
     ExecutionResult,
@@ -160,20 +160,31 @@ def cmd_verify(args):
 
     for step in steps:
         step_passed = True
+        skipped_checks = 0
 
         # Check preconditions
         pre_results = checker.evaluate(step.prechecks)
         for r in pre_results:
-            icon = f"{GREEN}✅{RESET}" if r.passed else f"{RED}❌{RESET}"
-            if not r.passed:
+            if r.verification_strength == "skipped":
+                icon = f"{YELLOW}⏭️{RESET}"
+                skipped_checks += 1
+            elif r.passed:
+                icon = f"{GREEN}✅{RESET}"
+            else:
+                icon = f"{RED}❌{RESET}"
                 step_passed = False
             print(f"  {icon} [{step.id}] pre: {r.description} {DIM}({r.evidence}){RESET}")
 
         # Check postconditions
         post_results = checker.evaluate(step.postchecks)
         for r in post_results:
-            icon = f"{GREEN}✅{RESET}" if r.passed else f"{RED}❌{RESET}"
-            if not r.passed:
+            if r.verification_strength == "skipped":
+                icon = f"{YELLOW}⏭️{RESET}"
+                skipped_checks += 1
+            elif r.passed:
+                icon = f"{GREEN}✅{RESET}"
+            else:
+                icon = f"{RED}❌{RESET}"
                 step_passed = False
             print(f"  {icon} [{step.id}] post: {r.description} {DIM}({r.evidence}){RESET}")
 
@@ -239,7 +250,7 @@ def cmd_show(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="aipipeline",
+        prog="pipeline",
         description="AI Pipeline Executor — deterministic step-by-step execution with verification",
     )
     subparsers = parser.add_subparsers(dest="command", help="Command to run")

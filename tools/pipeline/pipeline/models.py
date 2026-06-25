@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +95,7 @@ Check = Union[
 class RetryPolicy(BaseModel):
     max_attempts: int = 1
     backoff_seconds: float = 2.0
-    retry_on: list[str] = ["executor_error", "postcheck_failed"]
+    retry_on: list[str] = Field(default_factory=lambda: ["executor_error", "postcheck_failed"])
 
 
 # ---------------------------------------------------------------------------
@@ -116,12 +116,12 @@ class Step(BaseModel):
     """A single atomic unit of work in the pipeline."""
     id: str
     description: str
-    depends_on: list[str] = []
-    prechecks: list[Check] = []
+    depends_on: list[str] = Field(default_factory=list)
+    prechecks: list[Check] = Field(default_factory=list)
     action: str  # instruction or command to execute
-    postchecks: list[Check] = []
-    failure_policy: FailurePolicy = FailurePolicy()
-    retry: RetryPolicy = RetryPolicy()
+    postchecks: list[Check] = Field(default_factory=list)
+    failure_policy: FailurePolicy = Field(default_factory=FailurePolicy)
+    retry: RetryPolicy = Field(default_factory=RetryPolicy)
     timeout_seconds: int = 300
 
     @field_validator("id")
@@ -180,9 +180,9 @@ class ExecutionResult(BaseModel):
     output: str = ""
     error: Optional[str] = None
     exit_code: Optional[int] = None
-    artifacts: dict[str, str] = {}
-    started_at: datetime = datetime.now(timezone.utc)
-    completed_at: datetime = datetime.now(timezone.utc)
+    artifacts: dict[str, str] = Field(default_factory=dict)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    completed_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 # ---------------------------------------------------------------------------

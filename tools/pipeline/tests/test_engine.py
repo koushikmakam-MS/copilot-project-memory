@@ -5,14 +5,14 @@ import tempfile
 
 import pytest
 
-from aipipeline.checks import CheckEvaluator
-from aipipeline.engine import (
+from pipeline.checks import CheckEvaluator
+from pipeline.engine import (
     PipelineEngine,
     PrecheckFailedError,
     PostcheckFailedError,
     ExecutionFailedError,
 )
-from aipipeline.models import (
+from pipeline.models import (
     DAG,
     Step,
     StepStatus,

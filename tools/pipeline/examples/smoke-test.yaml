@@ -1,0 +1,17 @@
+name: Quick Smoke Test
+description: Simple pipeline to verify the tool works end-to-end
+
+steps:
+  - id: create-file
+    do: "Create a test file"
+    run: echo hello > test-output.txt
+    check:
+      - test-output.txt exists
+
+  - id: verify-content
+    do: "Check the file has content"
+    run: type test-output.txt
+    after: create-file
+    check:
+      - output contains "hello"
+      - exit code 0

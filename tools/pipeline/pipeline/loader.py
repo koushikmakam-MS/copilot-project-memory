@@ -7,7 +7,7 @@ from typing import Union
 
 import yaml
 
-from aipipeline.models import (
+from pipeline.models import (
     Check,
     CommandCheck,
     ContainsTextCheck,
@@ -26,6 +26,7 @@ def load_dag(source: Union[str, Path]) -> DAG:
 
     Supports a simplified YAML format for easy authoring:
     ```yaml
+    schema_version: 1
     name: My Pipeline
     steps:
       - id: build
@@ -38,11 +39,25 @@ def load_dag(source: Union[str, Path]) -> DAG:
     ```
     """
     path = Path(source)
+    if not path.exists():
+        raise FileNotFoundError(f"Pipeline file not found: {path}")
+
     with open(path, "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f)
 
+    if not isinstance(raw, dict):
+        raise ValueError(f"Pipeline YAML must be a mapping, got {type(raw).__name__}")
+
+    if "steps" not in raw or not isinstance(raw.get("steps"), list):
+        raise ValueError("Pipeline YAML must contain a 'steps' list")
+
+    if len(raw["steps"]) == 0:
+        raise ValueError("Pipeline must have at least one step")
+
     steps = []
-    for raw_step in raw.get("steps", []):
+    for raw_step in raw["steps"]:
+        if not isinstance(raw_step, dict):
+            raise ValueError(f"Each step must be a mapping, got {type(raw_step).__name__}")
         step = _parse_step(raw_step)
         steps.append(step)
 
@@ -152,4 +167,4 @@ def _parse_check_dict(d: dict) -> Check:
     elif check_type == "command":
         return CommandCheck(command=d.get("command", ""), description=d.get("description", ""))
     else:
-        return CommandCheck(command=str(d), description=f"Unknown: {d}")
+        raise ValueError(f"Unknown check type '{check_type}'. Supported: file_exists, dir_exists, exit_code, contains_text, command")

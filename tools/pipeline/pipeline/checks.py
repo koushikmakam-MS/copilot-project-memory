@@ -6,7 +6,7 @@ import os
 import subprocess
 from typing import Optional
 
-from aipipeline.models import (
+from pipeline.models import (
     BaseCheck,
     Check,
     CheckResult,
@@ -92,7 +92,8 @@ class CheckEvaluator:
                 check_type="exit_code",
                 description=check.description or f"Exit code == {check.expected}",
                 passed=False,
-                evidence="No execution result available",
+                evidence="No execution result available (verify-only mode)",
+                verification_strength="skipped",
             )
         passed = exec_result.exit_code == check.expected
         return CheckResult(
@@ -107,14 +108,23 @@ class CheckEvaluator:
         self, check: ContainsTextCheck, exec_result: Optional[ExecutionResult]
     ) -> CheckResult:
         text = ""
-        source_label = check.source
+        source = check.source.lower()
+        source_label = source
 
-        if check.source == "stdout" and exec_result:
+        if source in ("stdout", "output") and exec_result:
             text = exec_result.output
-        elif check.source == "stderr" and exec_result:
+        elif source == "stderr" and exec_result:
             text = exec_result.error or ""
-        elif check.source.startswith("file:"):
-            fpath = check.source[5:]
+        elif source in ("stdout", "output", "stderr") and not exec_result:
+            return CheckResult(
+                check_type="contains_text",
+                description=check.description or f"'{check.expected}' in {source_label}",
+                passed=False,
+                evidence=f"No execution result available (verify-only mode)",
+                verification_strength="skipped",
+            )
+        elif source.startswith("file:"):
+            fpath = source[5:]
             fpath = os.path.join(self.cwd, fpath) if not os.path.isabs(fpath) else fpath
             try:
                 with open(fpath, "r", encoding="utf-8") as f:
