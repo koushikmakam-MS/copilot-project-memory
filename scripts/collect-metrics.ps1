@@ -31,12 +31,28 @@ New-Item -ItemType Directory -Path (Join-Path $rootDir "docs") -Force | Out-Null
 
 Write-Host "Collecting metrics for $repo..." -ForegroundColor Cyan
 
+# --- Verify gh CLI authentication ---
+try {
+    $authStatus = gh auth status 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        Write-Warning "GitHub CLI not authenticated. Run 'gh auth login' first."
+        exit 1
+    }
+} catch {
+    Write-Warning "GitHub CLI (gh) not found. Install from https://cli.github.com/"
+    exit 1
+}
+
 # --- Fetch data from GitHub API ---
 function Invoke-GhApi($endpoint) {
     try {
         $json = gh api "repos/$repo/$endpoint" 2>$null
         if ($LASTEXITCODE -ne 0) {
-            Write-Warning "Failed to fetch $endpoint"
+            Write-Warning "Failed to fetch $endpoint (HTTP error or rate limit)"
+            return $null
+        }
+        if (-not $json -or $json.Trim() -eq "") {
+            Write-Warning "Empty response from $endpoint"
             return $null
         }
         return $json | ConvertFrom-Json
@@ -170,13 +186,13 @@ function Get-WeeklyAggregates($dailyData) {
 $cloneWeeks = Get-WeeklyAggregates $history.clones
 $viewWeeks  = Get-WeeklyAggregates $history.views
 
-# Cumulative totals
+# Cumulative totals (use daily data for counts, max-per-week for uniques to avoid overcounting)
 $totalClones  = ($history.clones | Measure-Object -Property count -Sum).Sum
-$totalUniqClones = 0
-foreach ($w in $cloneWeeks) { $totalUniqClones += $w.uniques }
+$totalUniqClones = ($history.clones | Measure-Object -Property uniques -Maximum).Maximum
+if (-not $totalUniqClones) { $totalUniqClones = 0 }
 $totalViews   = ($history.views | Measure-Object -Property count -Sum).Sum
-$totalUniqViews = 0
-foreach ($w in $viewWeeks) { $totalUniqViews += $w.uniques }
+$totalUniqViews = ($history.views | Measure-Object -Property uniques -Maximum).Maximum
+if (-not $totalUniqViews) { $totalUniqViews = 0 }
 
 # Latest repo stats
 $latestStats = $history.repo_stats | Sort-Object date | Select-Object -Last 1
@@ -224,8 +240,12 @@ foreach ($ref in $history.referrers) {
 $topReferrers = @($refAgg.Values | Sort-Object count -Descending | Select-Object -First 10)
 
 # Date range
-$firstDate = ($history.clones | Sort-Object date | Select-Object -First 1).date
-$lastDate  = ($history.clones | Sort-Object date | Select-Object -Last 1).date
+$allDates = @()
+if ($history.clones) { $allDates += @($history.clones | ForEach-Object { $_.date }) }
+if ($history.views) { $allDates += @($history.views | ForEach-Object { $_.date }) }
+$allDates = $allDates | Sort-Object
+$firstDate = if ($allDates.Count -gt 0) { $allDates[0] } else { $null }
+$lastDate  = if ($allDates.Count -gt 0) { $allDates[-1] } else { $null }
 $trackingDays = if ($firstDate -and $lastDate) {
     ([datetime]::Parse($lastDate) - [datetime]::Parse($firstDate)).Days + 1
 } else { 0 }

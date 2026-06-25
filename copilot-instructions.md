@@ -639,7 +639,7 @@ Snippets are stored as markdown files in `<project>/snippets/<name>.md`. Each co
 #### Team Sharing
 | User Types | What To Do |
 |-----------|------------|
-| `:export team` | Generate `.github/copilot-instructions.md` from project memory |
+| `:export team` | Generate `.github/instructions/project-memory.instructions.md` from project memory |
 | `:export team --scope=rules,stack` | Export only specific categories |
 | `:export team --fresh=30d` | Only export items used/updated in last 30 days |
 | `:export team --max-size=4kb` | Cap export file size (truncate least important items) |
@@ -721,7 +721,7 @@ To disable: `:prefs set auto_export_editors false`
 | Editor | File Generated | What It Contains |
 |--------|---------------|-----------------|
 | **VS Code / JetBrains** (auto-export) | `.github/instructions/project-memory.instructions.md` | Auto-synced rules, preferences, context |
-| **VS Code / JetBrains** (team export) | `.github/copilot-instructions.md` | Team-shared rules via `:export team` |
+| **VS Code / JetBrains** (team export) | `.github/instructions/project-memory.instructions.md` | Team-shared rules via `:export team` |
 | **VS Code settings** | `.vscode/settings.json` (merge) | Recommended extensions list |
 | **Neovim** | `COPILOT.md` | Rules and preferences in Copilot.vim format |
 | **Claude Code** | `CLAUDE.md` | Rules and preferences for Claude CLI |

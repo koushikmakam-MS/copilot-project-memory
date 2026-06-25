@@ -114,14 +114,23 @@ def ensure_project_dir(cwd: Optional[str] = None) -> Path:
 # ---------------------------------------------------------------------------
 
 def _read_yaml(path: Path) -> dict:
-    """Read a YAML file, returning empty dict if missing/empty."""
+    """Read a YAML file, returning empty dict if missing/empty.
+    
+    Warns if the file contains content that doesn't parse to a dict.
+    """
     if not path.exists():
         return {}
     text = path.read_text(encoding="utf-8-sig").strip()  # utf-8-sig handles BOM
     if not text:
         return {}
     data = yaml.safe_load(text)
-    return data if isinstance(data, dict) else {}
+    if data is None:
+        return {}
+    if not isinstance(data, dict):
+        import sys
+        print(f"Warning: {path} contains non-dict YAML ({type(data).__name__}), treating as empty", file=sys.stderr)
+        return {}
+    return data
 
 
 def _write_yaml(path: Path, data: dict) -> None:

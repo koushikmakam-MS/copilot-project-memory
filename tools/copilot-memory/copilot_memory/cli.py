@@ -512,9 +512,9 @@ def cmd_export(args: argparse.Namespace) -> int:
             pass
 
         if git_root:
-            out_dir = Path(git_root) / ".github"
-            out_dir.mkdir(exist_ok=True)
-            out_path = out_dir / "copilot-instructions.md"
+            out_dir = Path(git_root) / ".github" / "instructions"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_path = out_dir / "project-memory.instructions.md"
             out_path.write_text(output, encoding="utf-8")
             print(f"{_c(GREEN, '✅ Exported to:')} {out_path}")
         else:

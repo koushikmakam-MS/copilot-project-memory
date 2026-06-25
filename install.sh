@@ -37,6 +37,8 @@ echo "  [2/4] Setting up global memory files..."
 
 if [ ! -f "$GLOBAL_DIR/preferences.yml" ]; then
 cat > "$GLOBAL_DIR/preferences.yml" << 'PREFS'
+schema_version: 1
+
 # Global Preferences (apply to all projects unless overridden)
 # These are YOUR personal defaults.
 
@@ -54,6 +56,8 @@ fi
 
 if [ ! -f "$GLOBAL_DIR/rules.yml" ]; then
 cat > "$GLOBAL_DIR/rules.yml" << 'RULES'
+schema_version: 1
+
 # Global Rules (apply to all projects unless overridden)
 # Format:
 #   - type: do|dont
@@ -80,6 +84,8 @@ fi
 echo "  [3/4] Setting up project template..."
 
 cat > "$TEMPLATE_DIR/preferences.yml" << 'EOF'
+schema_version: 1
+
 # Project preferences (override global preferences)
 # language: python
 # framework: django
@@ -88,12 +94,16 @@ cat > "$TEMPLATE_DIR/preferences.yml" << 'EOF'
 EOF
 
 cat > "$TEMPLATE_DIR/rules.yml" << 'EOF'
+schema_version: 1
+
 # Project rules (in addition to global rules)
 # Project rules win over global rules when they conflict.
 rules: []
 EOF
 
 cat > "$TEMPLATE_DIR/context.yml" << 'EOF'
+schema_version: 1
+
 # Project context — auto-detected on first open, editable anytime.
 name: ""
 description: ""
@@ -103,6 +113,8 @@ notes: ""
 EOF
 
 cat > "$TEMPLATE_DIR/extensions.yml" << 'EOF'
+schema_version: 1
+
 # IDE Extensions for this project
 extensions: []
 EOF
@@ -112,44 +124,20 @@ echo "    ✅ Created project template"
 # --- Step 4: Install master instructions ---
 echo "  [4/5] Installing master instructions..."
 
-# Try to read from co-located file first
+# Try to read from co-located file first (prefer slim prompt)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MASTER_PROMPT_FILE="$SCRIPT_DIR/copilot-instructions.md"
+MASTER_PROMPT_FILE="$SCRIPT_DIR/prompts/copilot-instructions-slim.md"
+if [ ! -f "$MASTER_PROMPT_FILE" ]; then
+    MASTER_PROMPT_FILE="$SCRIPT_DIR/copilot-instructions.md"
+fi
 
 if [ -f "$MASTER_PROMPT_FILE" ]; then
     MASTER_PROMPT=$(cat "$MASTER_PROMPT_FILE")
+    echo "    Using: $(basename "$MASTER_PROMPT_FILE")"
 else
-    # Inline the prompt (same content as the .md file)
-    MASTER_PROMPT=$(cat << 'PROMPT'
-
-<!-- PROJECT MEMORY SKILL — Do not edit this section manually -->
-<!-- Installed by copilot-project-memory. See: ~/.copilot/project-memory/ -->
-
-## Project Memory System
-
-You have access to a persistent project memory system stored at ~/.copilot/project-memory/.
-
-### On Every Session Start
-1. Determine the current working directory.
-2. Check if a project memory folder exists for this directory in ~/.copilot/project-memory/.
-3. If memory exists, load all YAML files and offer to resume last session.
-4. If no memory exists, auto-detect stack and create from template.
-
-### Incremental Auto-Save
-Save session data incrementally throughout the conversation — not just on exit.
-Create session on first meaningful interaction, update after each file change or decision.
-On clean exit set status "closed"; unclean exits are detected and marked "abandoned" on next startup.
-
-### Commands (all use : prefix)
-- :status|:prefs|:rules|:context|:extensions|:sessions|:snippets|:export|:backup|:restore|:reset|:stats|:tracking|:help
-- :remember <instruction> — Quick-add a rule
-- :forget <rule-id> — Remove a rule
-
-See full command reference at: https://github.com/KoushikMakam/copilot-project-memory
-
-<!-- END PROJECT MEMORY SKILL -->
-PROMPT
-)
+    echo "    !! No instructions file found in $SCRIPT_DIR" >&2
+    echo "       Run installer from the copilot-project-memory repo directory." >&2
+    exit 1
 fi
 
 if [ -f "$INSTRUCTIONS_FILE" ]; then
@@ -189,10 +177,10 @@ if [ -d "$TOOLS_DIR" ]; then
             tool_name=$(basename "$tool_dir")
             printf "    Installing %s..." "$tool_name"
 
-            if command -v pip3 &>/dev/null; then
-                PIP_CMD="pip3"
-            elif command -v pip &>/dev/null; then
-                PIP_CMD="pip"
+            if command -v python3 &>/dev/null; then
+                PIP_CMD="python3 -m pip"
+            elif command -v python &>/dev/null; then
+                PIP_CMD="python -m pip"
             else
                 PIP_CMD=""
             fi
@@ -324,6 +312,50 @@ fi
 
 echo ""
 echo "  🎉 Installation complete!"
+echo ""
+
+# --- Post-install verification ---
+echo "  Verifying installation..."
+
+VERIFY_PASSED=true
+
+# Check directory structure
+if [ -d "$MEMORY_DIR" ]; then
+    echo "    ✅ Memory directory exists"
+else
+    echo "    ❌ Memory directory missing: $MEMORY_DIR"
+    VERIFY_PASSED=false
+fi
+
+# Check instructions file
+if [ -f "$INSTRUCTIONS_FILE" ] && grep -q "PROJECT MEMORY SKILL" "$INSTRUCTIONS_FILE"; then
+    echo "    ✅ Instructions file installed"
+else
+    echo "    ❌ Instructions file missing or incomplete"
+    VERIFY_PASSED=false
+fi
+
+# Check CLI tools
+if command -v copilot-memory &>/dev/null; then
+    echo "    ✅ copilot-memory CLI available"
+else
+    echo "    ⚠️  copilot-memory CLI not found (Python tools optional)"
+fi
+
+if command -v pipeline &>/dev/null; then
+    echo "    ✅ pipeline CLI available"
+else
+    echo "    ⚠️  pipeline CLI not found (Python tools optional)"
+fi
+
+if [ "$VERIFY_PASSED" = "true" ]; then
+    echo ""
+    echo "  ✅ All checks passed!"
+else
+    echo ""
+    echo "  ⚠️  Some checks failed — review the output above"
+fi
+
 echo ""
 echo "  Two ways to use Copilot with project memory:"
 echo "    1. Use 'ghc' (auto-grants memory access for any project)"
