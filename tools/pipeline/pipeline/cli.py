@@ -16,6 +16,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import yaml
+
 from pipeline.checks import CheckEvaluator
 from pipeline.engine import PipelineEngine
 from pipeline.loader import load_dag
@@ -104,6 +106,24 @@ def on_step_complete(entry: AuditEntry):
 
 def cmd_run(args):
     """Run a pipeline from a YAML file."""
+    # Approval gate: check if plan has been approved
+    plan_path = Path(args.plan)
+    with open(plan_path, "r", encoding="utf-8") as f:
+        raw_plan = yaml.safe_load(f)
+
+    if isinstance(raw_plan, dict) and "status" in raw_plan:
+        status = raw_plan.get("status", "")
+        if status == "pending_approval":
+            print(f"\n{RED}🚫 BLOCKED: This plan has not been approved yet.{RESET}")
+            print(f"   {DIM}Current status: pending_approval{RESET}")
+            print(f"\n   Run: {BOLD}pipeline approve {args.plan}{RESET} to approve first")
+            print(f"   Run: {BOLD}pipeline show {args.plan}{RESET} to review the plan\n")
+            return 1
+        elif status == "cancelled":
+            print(f"\n{RED}🚫 BLOCKED: This plan was cancelled.{RESET}")
+            print(f"   Re-approve with: {BOLD}pipeline approve {args.plan}{RESET}\n")
+            return 1
+
     dag = load_dag(args.plan)
 
     print(f"\n{BOLD}{CYAN}🔄 Pipeline: {dag.name}{RESET}")
@@ -248,12 +268,177 @@ def cmd_show(args):
     return 0
 
 
+def cmd_plan(args):
+    """Create a new plan YAML file with pending_approval status."""
+    output_path = Path(args.output)
+
+    # If the file already exists, check its status
+    if output_path.exists():
+        with open(output_path, "r", encoding="utf-8") as f:
+            existing = yaml.safe_load(f)
+        if isinstance(existing, dict) and existing.get("status") == "approved":
+            print(f"{RED}Error: Plan already approved. Use 'pipeline run' to execute.{RESET}")
+            return 1
+        if isinstance(existing, dict) and existing.get("status") == "running":
+            print(f"{RED}Error: Plan is currently running. Use 'pipeline show' to check status.{RESET}")
+            return 1
+
+    # Generate a skeleton plan
+    plan_content = {
+        "name": args.name or "Untitled Pipeline",
+        "description": args.description or "",
+        "status": "pending_approval",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "steps": [],
+    }
+
+    # If steps are provided via --steps (comma-separated IDs), scaffold them
+    if args.steps:
+        step_ids = [s.strip() for s in args.steps.split(",")]
+        prev_id = None
+        for step_id in step_ids:
+            step_entry = {
+                "id": step_id,
+                "do": f"TODO: describe {step_id}",
+                "run": f"echo TODO: implement {step_id}",
+                "after": [prev_id] if prev_id else [],
+                "check": ["exit code 0"],
+            }
+            plan_content["steps"].append(step_entry)
+            prev_id = step_id
+
+    # Write the plan
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_path, "w", encoding="utf-8") as f:
+        yaml.dump(plan_content, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+    print(f"\n{BOLD}{CYAN}📋 Plan created: {output_path}{RESET}")
+    print(f"   {DIM}Status: pending_approval{RESET}")
+    print(f"   {DIM}Steps: {len(plan_content['steps'])}{RESET}")
+    print(f"\n{YELLOW}⏳ This plan requires approval before execution.{RESET}")
+    print(f"   Run: {BOLD}pipeline approve {output_path}{RESET} to approve")
+    print(f"   Run: {BOLD}pipeline show {output_path}{RESET} to review")
+    print(f"   Run: {BOLD}pipeline run {output_path}{RESET} after approval\n")
+    return 0
+
+
+def cmd_approve(args):
+    """Approve a pending plan, unlocking it for execution."""
+    plan_path = Path(args.plan)
+
+    if not plan_path.exists():
+        print(f"{RED}Error: Plan file not found: {plan_path}{RESET}")
+        return 1
+
+    with open(plan_path, "r", encoding="utf-8") as f:
+        plan = yaml.safe_load(f)
+
+    if not isinstance(plan, dict):
+        print(f"{RED}Error: Invalid plan file format{RESET}")
+        return 1
+
+    current_status = plan.get("status", "unknown")
+
+    if current_status == "approved":
+        print(f"{YELLOW}Plan is already approved.{RESET}")
+        return 0
+
+    if current_status == "running":
+        print(f"{RED}Error: Plan is currently running — cannot re-approve.{RESET}")
+        return 1
+
+    if current_status == "cancelled":
+        print(f"{YELLOW}Warning: Re-approving a previously cancelled plan.{RESET}")
+
+    # Update status to approved
+    plan["status"] = "approved"
+    plan["approved_at"] = datetime.now(timezone.utc).isoformat()
+
+    with open(plan_path, "w", encoding="utf-8") as f:
+        yaml.dump(plan, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+    step_count = len(plan.get("steps", []))
+    print(f"\n{GREEN}✅ Plan approved: {plan.get('name', plan_path.stem)}{RESET}")
+    print(f"   {DIM}Steps: {step_count}{RESET}")
+    print(f"   {DIM}Approved at: {plan['approved_at']}{RESET}")
+    print(f"\n   Run: {BOLD}pipeline run {plan_path}{RESET} to execute\n")
+    return 0
+
+
+def cmd_status(args):
+    """Show the status of a plan file — is it pending, approved, running, or done?"""
+    plan_path = Path(args.plan)
+
+    if not plan_path.exists():
+        print(f"{RED}Error: Plan file not found: {plan_path}{RESET}")
+        return 1
+
+    with open(plan_path, "r", encoding="utf-8") as f:
+        plan = yaml.safe_load(f)
+
+    if not isinstance(plan, dict):
+        print(f"{RED}Error: Invalid plan file format{RESET}")
+        return 1
+
+    status = plan.get("status", "unknown")
+    name = plan.get("name", plan_path.stem)
+    steps = plan.get("steps", [])
+
+    status_icons = {
+        "pending_approval": f"{YELLOW}⏳ PENDING APPROVAL{RESET}",
+        "approved": f"{CYAN}✅ APPROVED (not yet run){RESET}",
+        "running": f"{CYAN}🔄 RUNNING{RESET}",
+        "completed": f"{GREEN}✅ COMPLETED{RESET}",
+        "failed": f"{RED}❌ FAILED{RESET}",
+        "cancelled": f"{DIM}🚫 CANCELLED{RESET}",
+    }
+
+    print(f"\n{BOLD}📋 {name}{RESET}")
+    print(f"   Status: {status_icons.get(status, status)}")
+    print(f"   Steps:  {len(steps)}")
+
+    if plan.get("created_at"):
+        print(f"   Created: {plan['created_at']}")
+    if plan.get("approved_at"):
+        print(f"   Approved: {plan['approved_at']}")
+
+    # Show per-step status if available
+    has_step_status = any(isinstance(s, dict) and "status" in s for s in steps)
+    if has_step_status:
+        print(f"\n   {'Step':<25} {'Status'}")
+        print(f"   {'─' * 45}")
+        for s in steps:
+            if isinstance(s, dict):
+                sid = s.get("id", "?")
+                ss = s.get("status", "pending")
+                icon = {"completed": "✅", "running": "🔄", "failed": "❌", "pending": "⏳"}.get(ss, "?")
+                print(f"   {icon} {sid:<23} {ss}")
+
+    print()
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog="pipeline",
         description="AI Pipeline Executor — deterministic step-by-step execution with verification",
     )
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
+
+    # plan (new — creates a plan without executing)
+    p_plan = subparsers.add_parser("plan", help="Create a new plan YAML (pending approval)")
+    p_plan.add_argument("--output", "-o", help="Output path for the plan YAML", required=True)
+    p_plan.add_argument("--name", "-n", help="Pipeline name", default=None)
+    p_plan.add_argument("--description", "-d", help="Pipeline description", default=None)
+    p_plan.add_argument("--steps", "-s", help="Comma-separated step IDs to scaffold", default=None)
+
+    # approve (new — unlocks a plan for execution)
+    p_approve = subparsers.add_parser("approve", help="Approve a pending plan for execution")
+    p_approve.add_argument("plan", help="Path to pipeline YAML file")
+
+    # status (new — check plan status)
+    p_status = subparsers.add_parser("status", help="Show the status of a plan")
+    p_status.add_argument("plan", help="Path to pipeline YAML file")
 
     # run
     p_run = subparsers.add_parser("run", help="Execute a pipeline from YAML")
@@ -274,7 +459,13 @@ def main():
 
     args = parser.parse_args()
 
-    if args.command == "run":
+    if args.command == "plan":
+        sys.exit(cmd_plan(args))
+    elif args.command == "approve":
+        sys.exit(cmd_approve(args))
+    elif args.command == "status":
+        sys.exit(cmd_status(args))
+    elif args.command == "run":
         sys.exit(cmd_run(args))
     elif args.command == "verify":
         sys.exit(cmd_verify(args))

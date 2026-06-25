@@ -96,11 +96,46 @@ a session JSON in `sessions/_default/`:
 
 Update `sessions/latest.json` to point to the current session.
 
-### Pipeline Mode
+### Pipeline Mode (MANDATORY for multi-step tasks)
 
-For multi-step tasks (3+ sequential steps), use the `pipeline` tool:
-- Decompose into a plan YAML → save to `pipelines/active-plan.yaml`
-- Execute with `pipeline run` and verify with `pipeline verify`
-- See `pipeline --help` for details
+**⚠️ HARD GATE: For ANY task requiring 3+ sequential steps, you MUST show a plan and get approval BEFORE executing anything.**
+
+**When to activate** — ANY of these triggers:
+- User types `:pipeline`
+- Message contains: `set up`, `setup`, `deploy`, `migrate`, `configure`, `bootstrap`, `onboard`, `follow the steps/guide/doc`, `end to end`, `step by step`, `full flow`
+- Task requires 3+ sequential steps where order matters
+- User points to a doc/guide to follow
+
+**When pipeline activates, follow this EXACT sequence:**
+
+1. **STOP** — Do NOT run any commands or make any changes yet
+2. **DECOMPOSE** — Break the task into atomic steps with pre/post checks
+3. **SHOW THE PLAN** — Present the plan to the user in this format:
+   ```
+   🔄 Pipeline mode activated (reason: <trigger>)
+
+   ═══ PIPELINE PLAN ═══
+   Task: <description>
+   Steps: <N>
+
+     1. [step-id] — Description
+        Pre-check: what must be true
+        Post-check: how to verify
+
+     2. [step-id] — Description
+        ...
+   ═══════════════════
+   ```
+4. **ASK FOR APPROVAL** — Use `ask_user` tool with choices:
+   - "✅ Approve — run this plan"
+   - "✏️ Modify — I want to change some steps"
+   - "❌ Cancel — don't run this"
+5. **WAIT** — Do NOT proceed until the user explicitly approves
+6. **EXECUTE** — Only after approval, save plan to `pipelines/active-plan.yaml` and execute step-by-step
+7. **VERIFY** — Run `pipeline verify` after each step
+
+**🚫 VIOLATION: Executing commands before showing a plan and receiving approval is a protocol violation. If you catch yourself about to run commands without approval, STOP immediately.**
+
+Use `pipeline plan <yaml>` to generate a plan, `pipeline run <yaml>` to execute, and `pipeline verify <yaml>` to verify.
 
 <!-- END PROJECT MEMORY SKILL -->
