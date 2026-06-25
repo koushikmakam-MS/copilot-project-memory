@@ -83,7 +83,7 @@ Built into Copilot Project Memory v2. No new tools to learn.
 |---|---|---|
 | 📄 | **Stored Plan** | Plan saved to disk as YAML — AI reads from file, can't "forget" steps |
 | 👤 | **Your Approval** | You review the plan before anything runs. No surprises. |
-| 🐍 | **Code Verification** | `aipipeline verify --step` runs after EACH step. Python checks postconditions — no AI judgment, pure pass/fail |
+| 🐍 | **Code Verification** | `pipeline verify --step` runs after EACH step. Python checks postconditions — no AI judgment, pure pass/fail |
 | 🔍 | **AI Validator** | Independent agent reviews the whole execution — catches structural issues code can't |
 
 Why two verification layers? AI alone: ~60% reliable. Code alone: catches failures but not missing steps. Both together: ~98%.
@@ -113,28 +113,28 @@ Copilot responds:
 📋 PRE-CHECK:  (none)
 🔨 EXECUTE:    python --version → Python 3.11.9
 📋 POST-CHECK: ✅ exit code 0
-🔍 VERIFY:     aipipeline verify --step check-python → ✅ PASSED
+🔍 VERIFY:     pipeline verify --step check-python → ✅ PASSED
 📊 RESULT:     ✅ PASSED
 
 ━━━ STEP [2/4]: create-calculator ━━━
 📋 PRE-CHECK:  ✅ check-python completed
 🔨 EXECUTE:    Created calculator.py
 📋 POST-CHECK: ✅ file exists, functions verified via AST parse
-🔍 VERIFY:     aipipeline verify --step create-calculator → ✅ PASSED
+🔍 VERIFY:     pipeline verify --step create-calculator → ✅ PASSED
 📊 RESULT:     ✅ PASSED
 
 ━━━ STEP [3/4]: create-tests ━━━
 📋 PRE-CHECK:  ✅ calculator.py exists
 🔨 EXECUTE:    Created test_calculator.py (8 test cases)
 📋 POST-CHECK: ✅ file exists, test classes verified
-🔍 VERIFY:     aipipeline verify --step create-tests → ✅ PASSED
+🔍 VERIFY:     pipeline verify --step create-tests → ✅ PASSED
 📊 RESULT:     ✅ PASSED
 
 ━━━ STEP [4/4]: run-tests ━━━
 📋 PRE-CHECK:  ✅ both files exist
 🔨 EXECUTE:    python -m unittest → 8 tests, all OK
 📋 POST-CHECK: ✅ exit code 0
-🔍 VERIFY:     aipipeline verify --step run-tests → ✅ PASSED
+🔍 VERIFY:     pipeline verify --step run-tests → ✅ PASSED
 📊 RESULT:     ✅ PASSED
 
 ═══ PIPELINE REPORT ═══
@@ -179,7 +179,7 @@ cd copilot-project-memory
 .\install.ps1
 ```
 
-The installer now auto-installs bundled tools (like `aipipeline`). Python 3.10+ recommended.
+The installer now auto-installs bundled tools (like `pipeline`). Python 3.10+ recommended.
 
 **Then try it:**
 - `:pipeline set up the dev environment` — verified execution

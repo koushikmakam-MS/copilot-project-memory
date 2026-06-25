@@ -1101,7 +1101,7 @@ For EACH step in the stored plan, output this EXACT structure:
 📊 RESULT: ✅ PASSED | ❌ FAILED | ⏭️ SKIPPED (optional step)
 
 🔍 VERIFY (run this shell command — mandatory, not optional):
-  aipipeline verify pipelines/active-plan.yaml --step [step-id] --cwd .
+  pipeline verify pipelines/active-plan.yaml --step [step-id] --cwd .
   → Output: ✅ PASS or ❌ FAIL with evidence
 ```
 
@@ -1112,7 +1112,7 @@ For EACH step in the stored plan, output this EXACT structure:
 4. **If a pre-check fails on a required step**, STOP the pipeline immediately.
 5. **If a post-check fails**, STOP and report what went wrong.
 6. **Use real tool calls** for verification — actually run commands, check files, read output.
-7. **ALWAYS run `aipipeline verify --step <id>`** after each step's post-check. This is a shell command you MUST execute — it is the code-enforced verification layer. If you skip this, the pipeline is invalid.
+7. **ALWAYS run `pipeline verify --step <id>`** after each step's post-check. This is a shell command you MUST execute — it is the code-enforced verification layer. If you skip this, the pipeline is invalid.
 8. **Update the plan file** after each step completes — mark the step status in `active-plan.yaml`:
    ```yaml
    steps:
@@ -1182,15 +1182,15 @@ Status: ✅ PASSED | ❌ FAILED at step [id] | ⚠️ PARTIAL (N/M steps)
 
 #### Phase 4: VALIDATE (final check)
 
-Each step was already code-verified via `aipipeline verify --step` during Phase 2.
+Each step was already code-verified via `pipeline verify --step` during Phase 2.
 Phase 4 runs a **full plan verification** and an **AI compliance review**.
 
 ##### Phase 4a: FULL CODE VERIFICATION
 
-Run `aipipeline verify` against the ENTIRE plan to catch anything missed:
+Run `pipeline verify` against the ENTIRE plan to catch anything missed:
 
 ```
-aipipeline verify pipelines/active-plan.yaml --cwd .
+pipeline verify pipelines/active-plan.yaml --cwd .
 ```
 
 This is a single shell command. Execute it and show the output. If any step FAILS, fix it before proceeding.
@@ -1258,7 +1258,7 @@ For any ❌, specify:
 ```
 
 **Why this works:**
-- **Layer 1 (code):** `aipipeline verify` deterministically checks postconditions — no AI judgment, no hallucination, pass/fail based on real filesystem state
+- **Layer 1 (code):** `pipeline verify` deterministically checks postconditions — no AI judgment, no hallucination, pass/fail based on real filesystem state
 - **Layer 2 (AI):** The rubber-duck agent catches structural issues, missing steps, and subjective quality problems that code can't evaluate
 - Both layers check against the STORED PLAN FILE — detects skipped steps
 - The main agent MUST act on findings from EITHER layer — not just acknowledge them
@@ -1396,7 +1396,7 @@ The pipeline protocol has **three enforcement layers** that generic instructions
 2. **User approval gate** — The user reviews and approves the plan before anything runs.
    The approved plan becomes a contract. No execution without explicit approval.
 
-3. **Code verification** — `aipipeline verify` deterministically checks every postcondition
+3. **Code verification** — `pipeline verify` deterministically checks every postcondition
    against the real filesystem. No AI judgment — pass/fail based on actual state.
 
 4. **Validator agent** — A separate rubber-duck agent independently compares the execution

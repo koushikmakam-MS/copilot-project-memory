@@ -10,7 +10,7 @@ A tool is a **standalone Python CLI package** that lives in `tools/<name>/` and 
 
 ```
 tools/
-├── aipipeline/          ← verification engine (ships with v1)
+├── pipeline/          ← verification engine (ships with v1)
 ├── your-tool/           ← your new tool
 │   ├── pyproject.toml   ← REQUIRED: package metadata
 │   ├── your_tool/       ← REQUIRED: Python package (same name or different)
@@ -237,7 +237,7 @@ There are 4 patterns for how a tool can integrate:
 
 The tool runs **as part of an existing workflow step**. This is the strongest pattern — hardest for AI to skip because it's embedded in the step template.
 
-**Example:** `aipipeline verify --step` runs after every pipeline step.
+**Example:** `pipeline verify --step` runs after every pipeline step.
 
 ```markdown
 <!-- In the Phase 2: EXECUTE section of copilot-instructions.md -->
@@ -394,7 +394,7 @@ copilot-instructions.md layout:
 │   Phase 4: VALIDATE                     │
 ├─────────────────────────────────────────┤
 │ Tool Reference                          │  ← All tool docs in one section
-│   Tool: aipipeline                      │
+│   Tool: pipeline                      │
 │   Tool: your-tool                       │
 │   Tool: another-tool                    │
 ├─────────────────────────────────────────┤
@@ -425,9 +425,9 @@ copilot-instructions.md layout:
 
 ---
 
-### Real Example: aipipeline Integration
+### Real Example: pipeline Integration
 
-Here's how `aipipeline` is integrated — use this as a reference:
+Here's how `pipeline` is integrated — use this as a reference:
 
 **Phase 0 (trigger):**
 ```markdown
@@ -437,14 +437,14 @@ Here's how `aipipeline` is integrated — use this as a reference:
 **Phase 2 (per-step hook — Pattern 1):**
 ```markdown
 🔍 VERIFY (run this shell command — mandatory):
-  aipipeline verify pipelines/active-plan.yaml --step [step-id] --cwd .
+  pipeline verify pipelines/active-plan.yaml --step [step-id] --cwd .
   → Output: ✅ PASS or ❌ FAIL with evidence
 ```
 
 **Phase 4a (phase hook — Pattern 2):**
 ```markdown
 Run full plan verification:
-  aipipeline verify pipelines/active-plan.yaml --cwd .
+  pipeline verify pipelines/active-plan.yaml --cwd .
 ```
 
 **What makes this work:**

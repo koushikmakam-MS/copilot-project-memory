@@ -2,9 +2,9 @@
 
 Tests the realistic scenario:
 1. Create a plan YAML
-2. Execute it (aipipeline run)
-3. Verify postconditions (aipipeline verify)
-4. Show the plan (aipipeline show)
+2. Execute it (pipeline run)
+3. Verify postconditions (pipeline verify)
+4. Show the plan (pipeline show)
 """
 
 import json
@@ -264,7 +264,7 @@ class TestInstallerDiscovery:
         assert pipeline_dir.exists(), "tools/pipeline/ not found"
         assert (pipeline_dir / "pyproject.toml").exists(), "pyproject.toml not found"
 
-    def test_aipipeline_importable(self):
+    def test_pipeline_importable(self):
         from pipeline import PipelineEngine, CheckEvaluator
         assert PipelineEngine is not None
         assert CheckEvaluator is not None

@@ -79,10 +79,10 @@ Update `sessions/latest.json` to point to the current session.
 
 ### Pipeline Mode
 
-For multi-step tasks (3+ sequential steps), use the `aipipeline` tool:
+For multi-step tasks (3+ sequential steps), use the `pipeline` tool:
 - Decompose into a plan YAML → save to `pipelines/active-plan.yaml`
-- Execute with `aipipeline run` and verify with `aipipeline verify`
-- See `aipipeline --help` for details
+- Execute with `pipeline run` and verify with `pipeline verify`
+- See `pipeline --help` for details
 
 ### Project Folder Matching
 
