@@ -54,6 +54,8 @@ Write-Host "  [2/4] Setting up global memory files..." -ForegroundColor Yellow
 $globalPrefs = Join-Path $globalDir "preferences.yml"
 if (-not (Test-Path $globalPrefs)) {
     @"
+schema_version: 1
+
 # Global Preferences (apply to all projects unless overridden)
 # These are YOUR personal defaults.
 
@@ -72,6 +74,8 @@ if (-not (Test-Path $globalPrefs)) {
 $globalRules = Join-Path $globalDir "rules.yml"
 if (-not (Test-Path $globalRules)) {
     @"
+schema_version: 1
+
 # Global Rules (apply to all projects unless overridden)
 # Format:
 #   - type: do|dont
@@ -106,6 +110,8 @@ if (-not (Test-Path $templateDir)) {
 }
 
 @"
+schema_version: 1
+
 # Project preferences (override global preferences)
 # Uncomment and customize for this project.
 
@@ -119,6 +125,8 @@ if (-not (Test-Path $templateDir)) {
 "@ | Set-Content -Path (Join-Path $templateDir "preferences.yml") -Encoding UTF8
 
 @"
+schema_version: 1
+
 # Project rules (in addition to global rules)
 # Project rules win over global rules when they conflict.
 
@@ -126,6 +134,8 @@ rules: []
 "@ | Set-Content -Path (Join-Path $templateDir "rules.yml") -Encoding UTF8
 
 @"
+schema_version: 1
+
 # Project context — auto-detected on first open, editable anytime.
 name: ""
 description: ""
@@ -135,6 +145,8 @@ notes: ""
 "@ | Set-Content -Path (Join-Path $templateDir "context.yml") -Encoding UTF8
 
 @"
+schema_version: 1
+
 # IDE Extensions for this project
 # required: true means the extension is essential for this project
 
@@ -344,6 +356,52 @@ try {
 
 Write-Host ""
 Write-Host "  🎉 Installation complete!" -ForegroundColor Green
+Write-Host ""
+
+# --- Post-install verification ---
+Write-Host "  Verifying installation..." -ForegroundColor Yellow
+
+$verifyPassed = $true
+
+# Check directory structure
+if (Test-Path $memoryDir) {
+    Write-Host "    ✅ Memory directory exists" -ForegroundColor Green
+} else {
+    Write-Host "    ❌ Memory directory missing: $memoryDir" -ForegroundColor Red
+    $verifyPassed = $false
+}
+
+# Check instructions file
+if ((Test-Path $instructionsFile) -and (Select-String -Path $instructionsFile -Pattern "PROJECT MEMORY SKILL" -Quiet)) {
+    Write-Host "    ✅ Instructions file installed" -ForegroundColor Green
+} else {
+    Write-Host "    ❌ Instructions file missing or incomplete" -ForegroundColor Red
+    $verifyPassed = $false
+}
+
+# Check CLI tools
+try {
+    $null = Get-Command copilot-memory -ErrorAction Stop
+    Write-Host "    ✅ copilot-memory CLI available" -ForegroundColor Green
+} catch {
+    Write-Host "    ⚠️  copilot-memory CLI not found (Python tools optional)" -ForegroundColor Yellow
+}
+
+try {
+    $null = Get-Command pipeline -ErrorAction Stop
+    Write-Host "    ✅ pipeline CLI available" -ForegroundColor Green
+} catch {
+    Write-Host "    ⚠️  pipeline CLI not found (Python tools optional)" -ForegroundColor Yellow
+}
+
+if ($verifyPassed) {
+    Write-Host ""
+    Write-Host "  ✅ All checks passed!" -ForegroundColor Green
+} else {
+    Write-Host ""
+    Write-Host "  ⚠️  Some checks failed — review the output above" -ForegroundColor Yellow
+}
+
 Write-Host ""
 Write-Host "  Two ways to use Copilot with project memory:" -ForegroundColor White
 Write-Host "    1. Use 'ghc' (auto-grants memory access for any project)" -ForegroundColor White

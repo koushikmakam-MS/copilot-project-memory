@@ -266,7 +266,7 @@ After approval, each step runs with:
 
 #### Team Sharing & Multi-Editor
 ```
-:export team              — Generate .github/copilot-instructions.md (shared rules only)
+:export team              — Generate .github/instructions/project-memory.instructions.md (shared rules only)
 :export team --all-rules  — Include all rules, not just shared ones
 :export team --scope=rules,stack  — Export specific categories only
 :export team --fresh=30d  — Only items used in last 30 days
@@ -289,6 +289,7 @@ When enabled, `.github/instructions/project-memory.instructions.md` is **automat
 
 This file lives **alongside** `.github/copilot-instructions.md` (team instructions) — they never conflict:
 - `.github/copilot-instructions.md` → team rules (manual, committed)
+- `.github/instructions/project-memory.instructions.md` → auto-exported project memory (generated)
 - `.github/instructions/project-memory.instructions.md` → your memory (auto-generated, gitignored by default)
 
 VS Code and JetBrains read both locations automatically. No restart needed.
@@ -409,7 +410,7 @@ copilot-memory verify --fix        # Auto-fix integrity issues (dangling session
 copilot-memory compact             # Enforce storage caps, prune stale data
 copilot-memory init                # Initialize memory for a new project
 copilot-memory schema-fix          # Add missing schema_version headers to YAML files
-copilot-memory export team         # Export shared rules to .github/copilot-instructions.md
+copilot-memory export team         # Export shared rules to .github/instructions/project-memory.instructions.md
 copilot-memory export stdout       # Export to stdout (for piping)
 ```
 
@@ -474,7 +475,7 @@ Share your project's rules with teammates without requiring them to install anyt
 :export team
 ```
 
-This generates a `.github/copilot-instructions.md` file in your repo with your project context, rules, and preferences — readable by any Copilot-enabled editor (VS Code, JetBrains, Neovim, etc.).
+This generates a `.github/instructions/project-memory.instructions.md` file in your repo with your project context, rules, and preferences — readable by any Copilot-enabled editor (VS Code, JetBrains, Neovim, etc.).
 
 **What gets exported:** Project context, rules, preferences, architecture patterns
 **What stays private:** Session history, personal style preferences, error patterns
@@ -493,7 +494,7 @@ A: Python 3.10+ with pip is recommended for bundled tools (like `pipeline`). The
 A: The slim prompt (~800 tokens) tells Copilot the memory system exists and how to use it. Simple ops (`:remember`, `:rules`) are handled by the AI directly reading/writing YAML. Complex ops (`:verify`, `:compact`) delegate to the `copilot-memory` CLI for deterministic execution. Pipeline verification uses the `pipeline` CLI.
 
 **Q: Can my team use this?**
-A: Use `:export team` to generate a `.github/copilot-instructions.md` — teammates get your rules automatically, no install needed.
+A: Use `:export team` to generate a `.github/instructions/project-memory.instructions.md` — teammates get your rules automatically, no install needed.
 
 **Q: How do I move to a new machine?**
 A: Use `:backup` on the old machine, copy the archive, and `:restore <path>` on the new one. Or re-run the installer and start fresh.
@@ -502,7 +503,7 @@ A: Use `:backup` on the old machine, copy the archive, and `:restore <path>` on 
 A: Project rules always win. Global rules are defaults that can be overridden per-project.
 
 **Q: Does it work with VS Code / JetBrains Copilot?**
-A: Yes! Enable `auto_export_editors` (on by default) and your rules/preferences automatically sync to `.github/copilot-instructions.md` which VS Code and JetBrains read natively. You can also run `:export editors` to generate files for Neovim, Cursor, and Claude Code.
+A: Yes! Enable `auto_export_editors` (on by default) and your rules/preferences automatically sync to `.github/instructions/project-memory.instructions.md` which VS Code and JetBrains read natively. You can also run `:export editors` to generate files for Neovim, Cursor, and Claude Code.
 
 ---
 
