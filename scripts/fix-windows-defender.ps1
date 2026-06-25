@@ -13,7 +13,7 @@ $scriptsDir = Join-Path $pythonBase "Scripts"
 $tools = @(
     # Python and CLI tools
     (Join-Path $pythonBase "python.exe"),
-    (Join-Path $scriptsDir "aipipeline.exe"),
+    (Join-Path $scriptsDir "pipeline.exe"),
     (Join-Path $scriptsDir "copilot-memory.exe"),
     # Terminal hosts (CFA blocks these when CLI writes to protected dirs)
     "C:\Windows\System32\conhost.exe",

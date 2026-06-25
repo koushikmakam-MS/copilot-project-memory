@@ -1,6 +1,6 @@
 """AI Pipeline Executor — Deterministic step-by-step task execution with verification."""
 
-from aipipeline.models import (
+from pipeline.models import (
     Step,
     DAG,
     FileExistsCheck,
@@ -14,8 +14,8 @@ from aipipeline.models import (
     AuditEntry,
     ExecutionReport,
 )
-from aipipeline.engine import PipelineEngine
-from aipipeline.checks import CheckEvaluator
+from pipeline.engine import PipelineEngine
+from pipeline.checks import CheckEvaluator
 
 __version__ = "0.1.0"
 

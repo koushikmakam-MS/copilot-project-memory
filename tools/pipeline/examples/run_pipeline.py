@@ -3,9 +3,9 @@
 import subprocess
 from datetime import datetime, timezone
 
-from aipipeline import PipelineEngine, CheckEvaluator, ExecutionResult
-from aipipeline.loader import load_dag
-from aipipeline.models import AuditEntry, Step
+from pipeline import PipelineEngine, CheckEvaluator, ExecutionResult
+from pipeline.loader import load_dag
+from pipeline.models import AuditEntry, Step
 
 
 def shell_executor(step: Step) -> ExecutionResult:

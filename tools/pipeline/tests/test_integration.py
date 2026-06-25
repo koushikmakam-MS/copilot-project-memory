@@ -2,9 +2,9 @@
 
 Tests the realistic scenario:
 1. Create a plan YAML
-2. Execute it (aipipeline run)
-3. Verify postconditions (aipipeline verify)
-4. Show the plan (aipipeline show)
+2. Execute it (pipeline run)
+3. Verify postconditions (pipeline verify)
+4. Show the plan (pipeline show)
 """
 
 import json
@@ -31,13 +31,14 @@ def write_plan(workspace: Path, plan: dict) -> Path:
 
 
 def run_cli(*args, cwd=None):
-    """Run aipipeline CLI and return (exit_code, stdout, stderr)."""
+    """Run pipeline CLI and return (exit_code, stdout, stderr)."""
     result = subprocess.run(
-        [sys.executable, "-m", "aipipeline"] + list(args),
+        [sys.executable, "-m", "pipeline"] + list(args),
         capture_output=True,
-        text=True,
         cwd=cwd,
         timeout=30,
+        encoding="utf-8",
+        errors="replace",
     )
     return result.returncode, result.stdout, result.stderr
 
@@ -257,14 +258,14 @@ class TestInstallerDiscovery:
     """Test that the installer can discover tools."""
 
     def test_tools_dir_has_pyproject(self):
-        tools_dir = Path(__file__).parent.parent.parent / "tools"
+        tools_dir = Path(__file__).parent.parent.parent
         assert tools_dir.exists(), f"tools/ directory not found at {tools_dir}"
-        aipipeline_dir = tools_dir / "aipipeline"
-        assert aipipeline_dir.exists(), "tools/aipipeline/ not found"
-        assert (aipipeline_dir / "pyproject.toml").exists(), "pyproject.toml not found"
+        pipeline_dir = tools_dir / "pipeline"
+        assert pipeline_dir.exists(), "tools/pipeline/ not found"
+        assert (pipeline_dir / "pyproject.toml").exists(), "pyproject.toml not found"
 
-    def test_aipipeline_importable(self):
-        from aipipeline import PipelineEngine, CheckEvaluator
+    def test_pipeline_importable(self):
+        from pipeline import PipelineEngine, CheckEvaluator
         assert PipelineEngine is not None
         assert CheckEvaluator is not None
 

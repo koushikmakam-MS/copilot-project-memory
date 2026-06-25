@@ -54,7 +54,7 @@ You: "Set up the project for a new developer"
 📋 PRE-CHECK:  ✅
 🔨 EXECUTE:    python --version → 3.11.9
 📋 POST-CHECK: ✅ (evidence: Python 3.11.9)
-🔍 VERIFY:     aipipeline verify --step check-python → ✅
+🔍 VERIFY:     pipeline verify --step check-python → ✅
 📊 RESULT: ✅ PASSED
 
 ═══ FINAL REPORT ═══
@@ -74,7 +74,7 @@ You: "Set up the project for a new developer"
 |---|---|---|
 | 📄 | **Stored Plan** | Plan saved to disk — AI reads from file, can't forget steps |
 | 👤 | **User Approval** | You review the plan before anything runs |
-| 🐍 | **Code Verify** | `aipipeline verify --step` after EACH step — Python checks, not AI |
+| 🐍 | **Code Verify** | `pipeline verify --step` after EACH step — Python checks, not AI |
 | 🔍 | **AI Validator** | Independent agent checks: were ALL steps followed correctly? |
 
 ---

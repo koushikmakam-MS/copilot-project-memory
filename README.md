@@ -36,13 +36,13 @@ Simple ops (fast, AI handles inline)     Complex ops (CLI tools, deterministic)
 │ :context, :resume       │  writes     │ copilot-memory init        │
 │ session auto-save       │  YAML       │ copilot-memory export      │
 │ :help                   │  directly   │ copilot-memory schema-fix  │
-└─────────────────────────┘             │ aipipeline run/verify/show │
+└─────────────────────────┘             │ pipeline run/verify/show   │
                                         └────────────────────────────┘
 ```
 
 - **Slim prompt (~800 tokens)** tells the AI what tools exist and how to handle simple commands
 - **`copilot-memory` CLI** handles integrity checks, storage caps, schema validation — with Pydantic models and atomic writes
-- **`aipipeline` CLI** handles deterministic pipeline execution with hash-chained audit trails
+- **`pipeline` CLI** handles deterministic pipeline execution with hash-chained audit trails
 
 ---
 
@@ -106,7 +106,7 @@ curl -fsSL https://raw.githubusercontent.com/KoushikMakam/copilot-project-memory
 ### What the installer does:
 1. Creates `~/.copilot/project-memory/` with global and template folders
 2. Installs the **slim prompt** into `~/.copilot/copilot-instructions.md` (~800 tokens)
-3. **Auto-discovers and installs all tools from `tools/`** (e.g., `aipipeline`, `copilot-memory`)
+3. **Auto-discovers and installs all tools from `tools/`** (e.g., `pipeline`, `copilot-memory`)
 4. Adds a `ghc` shell alias (auto-grants memory path access)
 5. Seeds file permissions for the current project directory
 6. **Auto-whitelists tools** with Windows Defender Controlled Folder Access (if enabled)
@@ -227,7 +227,7 @@ Force Copilot to decompose, verify, and audit every step of complex tasks — wi
 2. **STORE & APPROVE** — Plan saved to disk as YAML, shown as visual workflow, you approve
 3. **EXECUTE** — Each step runs with evidence-based verification
 4. **VERIFY (two layers):**
-   - **Code verification:** Copilot internally runs `aipipeline verify` — deterministic postcondition checking against the real filesystem (no AI judgment)
+   - **Code verification:** Copilot internally runs `pipeline verify` — deterministic postcondition checking against the real filesystem (no AI judgment)
    - **AI verification:** A rubber-duck agent independently checks compliance against the approved plan
 5. **REPORT** — Summary table with pass/fail status and evidence
 
@@ -378,15 +378,15 @@ Tools live in the `tools/` directory and are auto-installed by the installer. Ea
 
 ```
 tools/
-├── aipipeline/                     # Pipeline verification engine
+├── pipeline/                       # Pipeline verification engine
 │   ├── pyproject.toml
-│   ├── aipipeline/
-│   │   ├── cli.py                  # CLI: aipipeline run|verify|show
+│   ├── pipeline/
+│   │   ├── cli.py                  # CLI: pipeline run|verify|show
 │   │   ├── engine.py               # Deterministic execution loop
 │   │   ├── models.py               # Pydantic models (Step, DAG, Audit)
 │   │   ├── checks.py               # Postcondition evaluator
 │   │   └── loader.py               # YAML plan loader
-│   ├── tests/                      # 18 tests
+│   ├── tests/                      # 31 tests
 │   └── examples/                   # Example pipeline YAML files
 │
 └── copilot-memory/                 # Memory management CLI (NEW in v2)
@@ -420,14 +420,14 @@ copilot-memory export stdout       # Export to stdout (for piping)
 - **Session integrity** — Detects dangling pointers, ID mismatches, empty sessions
 - **Storage caps** — Enforces hard limits on sessions, hotspots, error patterns
 
-### aipipeline CLI
+### pipeline CLI
 
 The bundled pipeline verification engine. Copilot calls this internally — **you never need to run it manually**.
 
 ```bash
-aipipeline verify <plan.yaml>   # Check postconditions (no execution)
-aipipeline run <plan.yaml>      # Execute pipeline with shell commands
-aipipeline show <plan.yaml>     # Display plan as workflow diagram
+pipeline verify <plan.yaml>   # Check postconditions (no execution)
+pipeline run <plan.yaml>      # Execute pipeline with shell commands
+pipeline show <plan.yaml>     # Display plan as workflow diagram
 ```
 
 ---
@@ -487,10 +487,10 @@ This generates a `.github/copilot-instructions.md` file in your repo with your p
 A: No. Everything lives in `~/.copilot/project-memory/`. Zero repo pollution. Only `:export team` writes to your repo (intentionally).
 
 **Q: Do I need Node.js or any runtime?**
-A: Python 3.10+ with pip is recommended for bundled tools (like `aipipeline`). The memory system itself works without Python — tools add deterministic verification for complex tasks.
+A: Python 3.10+ with pip is recommended for bundled tools (like `pipeline`). The memory system itself works without Python — tools add deterministic verification for complex tasks.
 
 **Q: How does it work without code?**
-A: The slim prompt (~800 tokens) tells Copilot the memory system exists and how to use it. Simple ops (`:remember`, `:rules`) are handled by the AI directly reading/writing YAML. Complex ops (`:verify`, `:compact`) delegate to the `copilot-memory` CLI for deterministic execution. Pipeline verification uses the `aipipeline` CLI.
+A: The slim prompt (~800 tokens) tells Copilot the memory system exists and how to use it. Simple ops (`:remember`, `:rules`) are handled by the AI directly reading/writing YAML. Complex ops (`:verify`, `:compact`) delegate to the `copilot-memory` CLI for deterministic execution. Pipeline verification uses the `pipeline` CLI.
 
 **Q: Can my team use this?**
 A: Use `:export team` to generate a `.github/copilot-instructions.md` — teammates get your rules automatically, no install needed.
