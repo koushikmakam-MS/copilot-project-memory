@@ -240,6 +240,67 @@ Save/update the session file after ANY of these events:
 - `"closed"` — session ended cleanly (user said goodbye, `:session new`, etc.)
 - `"abandoned"` — session was never cleanly closed (detected on next startup)
 
+#### Auto-Compaction on Save (TOKEN OPTIMIZATION)
+
+Before writing a session file, check whether it has grown large enough that
+reloading it would waste tokens. Compact **in place** when any of these hold:
+
+- `len(decisions) + len(learnings) > 20`, OR
+- `len(filesChanged) > 30`, OR
+- serialized JSON size > 8 KB
+
+**Deterministic gate:** Run `copilot-memory session check-size` (exit code 1
+means compaction is recommended). This keeps the trigger predictable across
+sessions and models.
+
+**Compaction protocol (do this yourself — no extra LLM call needed, you are
+already generating the save):**
+
+1. Keep the **last 5** `decisions` and the **last 5** `learnings` verbatim.
+2. Rewrite everything older into a single prose paragraph appended to the
+   `compactedSummary` field (do not overwrite — append with a divider line
+   `---` between rounds so history stays auditable).
+3. Deduplicate `filesChanged` and keep the last 30 entries.
+4. Increment `compactionCount` by 1.
+5. Preserve `sessionId`, `startedAt`, `status`, and the rolling `summary`.
+
+Two new fields on the session JSON:
+
+```json
+{
+  "compactedSummary": "<prose describing older decisions/learnings>",
+  "compactionCount": 0
+}
+```
+
+Older sessions without these fields are still valid — treat missing fields as
+default (`""` and `0`). Never compact a session with `status: "closed"` — it is
+already frozen.
+
+**Closed sessions auto-archive.** `copilot-memory compact` (and the explicit
+`copilot-memory session archive`) gzip closed sessions older than 7 days into
+`<sid>.json.gz`. Reads are transparent — `load_session` handles both
+extensions — so `:resume` and integrity checks still work. Do not manually
+open `.json.gz` files; treat them as read-only cold storage.
+
+#### Session File Format (extended)
+
+```json
+{
+  "sessionId": "<uuid>",
+  "status": "active",
+  "startedAt": "<ISO timestamp>",
+  "lastUpdatedAt": "<ISO timestamp>",
+  "endedAt": null,
+  "summary": "<rolling summary, updated as session progresses>",
+  "filesChanged": ["<accumulated list>"],
+  "decisions": ["<key decisions made, accumulated>"],
+  "learnings": ["<new things learned, accumulated>"],
+  "compactedSummary": "<prose of older, compacted entries>",
+  "compactionCount": 0
+}
+```
+
 #### How to Save
 
 1. Determine the active session target:
@@ -521,7 +582,7 @@ The user types these as **regular chat messages** (not slash commands):
 
 **Recognition rules:**
 1. ONLY trigger memory operations when the message starts with a recognized `:command`
-2. Recognized commands: `:status`, `:resume`, `:remember`, `:forget`, `:rules`, `:prefs`, `:context`, `:extensions`, `:sessions`, `:session`, `:snippets`, `:export`, `:backup`, `:restore`, `:reset`, `:stats`, `:tracking`, `:compact`, `:verify`, `:pipeline`, `:help`, `:?`
+2. Recognized commands: `:status`, `:resume`, `:remember`, `:forget`, `:rules`, `:prefs`, `:context`, `:extensions`, `:sessions`, `:session`, `:merge`, `:snippets`, `:export`, `:backup`, `:restore`, `:reset`, `:stats`, `:tracking`, `:compact`, `:verify`, `:pipeline`, `:help`, `:?`
 3. Without the `:` prefix, treat "remember", "forget", "rules", etc. as normal conversation
 4. The prefix is case-insensitive: `:Status`, `:REMEMBER`, `:Rules` all work
 5. If the message doesn't start with a recognized `:command`, do NOT trigger any memory operation
@@ -638,6 +699,7 @@ If you notice the user correcting the same pattern multiple times in a session:
 | `:session delete <name>` | Remove a named session (asks confirmation) |
 | `:session notes` | Show notes for active session |
 | `:session notes <text>` | Append a note to active session's notes.md |
+| `:merge <sid1> <sid2> [<sid3>…] [into <name>]` | Merge N existing sessions into a new session that inherits their combined context. Runs `copilot-memory session merge <sids…> [--into <name>]` — parents stay untouched; new session gets `parents: [...]` lineage plus each parent's digest baked into `compactedSummary`. Use when starting work that spans several past feature sessions. |
 | `:remember <instruction>` | Quick-add a rule (auto-detects do/don't) |
 | `:forget <rule-id>` | Remove a rule |
 | `:rules touch <id>` | Mark a rule as still relevant (resets staleness) |

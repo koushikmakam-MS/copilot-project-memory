@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-07-29
+
+### Added
+- 🗜️ **Session auto-compaction on save** — When a session crosses any threshold (decisions+learnings > 20, filesChanged > 30, or serialized size > 8 KB), older entries are collapsed into a new `compactedSummary` field before writing. Only the last 5 decisions/learnings are kept verbatim. Massively reduces token cost on `:resume`.
+  - New `SessionEntry` fields: `compactedSummary: str`, `compactionCount: int`.
+  - New CLI: `copilot-memory session check-size [--path P | --session-id ID]` — deterministic gate (exit 1 = compact recommended).
+  - `:status` now shows `🗜️ Compactions: N` and warns when the latest session is ready to compact.
+- 📦 **Gzip archival for cold sessions** — `copilot-memory compact` now automatically gzips closed sessions older than 7 days into `<sid>.json.gz`. Reads are transparent — `load_session`, `find_session_file`, `list_sessions`, and integrity checks all handle both extensions. Also exposed as `copilot-memory session archive [--older-than-days N]`.
+- 🔀 **Session merging** — Combine multiple past sessions into a new session that inherits their union of context. Chat command `:merge <sid1> <sid2> [into <name>]`; CLI `copilot-memory session merge <sids...> [--into NAME] [--new-id ID] [--dry-run]`.
+  - New `SessionEntry.parents: list[str]` for lineage.
+  - Deduplicated union of `filesChanged` / `decisions` / `learnings`; overflow beyond compaction thresholds is folded into `compactedSummary` with per-parent digests.
+  - Parents are **never mutated** — original sessions remain resumable individually.
+
+### Changed
+- `copilot-memory compact` runs archival before size-cap enforcement, and cap counting now covers both `.json` and `.json.gz` entries so limits stay accurate after archival.
+- Test suite grew from 56 → 81 (25 new tests across compaction, archival, and merge).
+
 ## [1.1.0] - 2026-04-30
 
 ### Added

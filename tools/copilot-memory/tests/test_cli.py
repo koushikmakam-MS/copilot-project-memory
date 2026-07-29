@@ -239,3 +239,134 @@ class TestCmdSchemaFix:
         assert code == 0
         output = capsys.readouterr().out
         assert "already have schema_version" in output
+
+
+class SessionCheckArgs:
+    def __init__(self, cwd=None, path=None, session_id=None):
+        self.cwd = cwd
+        self.path = path
+        self.session_id = session_id
+
+
+class TestCmdSessionCheckSize:
+    def test_within_limits_returns_zero(self, mock_memory, capsys):
+        from copilot_memory.cli import cmd_session_check_size
+
+        tmp_path, project_dir = mock_memory
+        with patch("copilot_memory.cli.find_project_dir", return_value=project_dir):
+            code = cmd_session_check_size(SessionCheckArgs())
+        out = capsys.readouterr().out
+        assert code == 0
+        assert "within limits" in out
+
+    def test_over_threshold_returns_one(self, mock_memory, capsys):
+        from copilot_memory.cli import cmd_session_check_size
+
+        tmp_path, project_dir = mock_memory
+        # Bloat the existing session
+        sid = "test-session-001"
+        path = project_dir / "sessions" / "_default" / f"{sid}.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["decisions"] = [f"d{i}" for i in range(15)]
+        data["learnings"] = [f"l{i}" for i in range(10)]
+        path.write_text(json.dumps(data), encoding="utf-8")
+
+        with patch("copilot_memory.cli.find_project_dir", return_value=project_dir):
+            code = cmd_session_check_size(SessionCheckArgs())
+        out = capsys.readouterr().out
+        assert code == 1
+        assert "compaction recommended" in out
+
+    def test_explicit_path_wins(self, mock_memory, capsys, tmp_path):
+        from copilot_memory.cli import cmd_session_check_size
+
+        _, project_dir = mock_memory
+        big = tmp_path / "big.json"
+        big.write_text(json.dumps({
+            "sessionId": "big",
+            "status": "active",
+            "filesChanged": [f"f{i}.py" for i in range(50)],
+        }), encoding="utf-8")
+
+        with patch("copilot_memory.cli.find_project_dir", return_value=project_dir):
+            code = cmd_session_check_size(SessionCheckArgs(path=str(big)))
+        assert code == 1
+
+    def test_missing_session_returns_two(self, mock_memory, capsys, tmp_path):
+        from copilot_memory.cli import cmd_session_check_size
+
+        _, project_dir = mock_memory
+        with patch("copilot_memory.cli.find_project_dir", return_value=project_dir):
+            code = cmd_session_check_size(SessionCheckArgs(path=str(tmp_path / "nope.json")))
+        assert code == 2
+
+
+class MergeArgs:
+    def __init__(self, sids, cwd=None, into=None, new_id=None, dry_run=False):
+        self.sids = sids
+        self.cwd = cwd
+        self.into = into
+        self.new_id = new_id
+        self.dry_run = dry_run
+
+
+class TestCmdSessionMerge:
+    def _write_extra_session(self, project_dir, sid, **fields):
+        payload = {
+            "sessionId": sid,
+            "status": "active",
+            "startedAt": "2026-06-01T00:00:00Z",
+            "lastUpdatedAt": "2026-06-01T00:00:00Z",
+            "summary": fields.get("summary", ""),
+            "filesChanged": fields.get("filesChanged", []),
+            "decisions": fields.get("decisions", []),
+            "learnings": fields.get("learnings", []),
+        }
+        _write_json(project_dir / "sessions" / "_default" / f"{sid}.json", payload)
+
+    def test_merge_creates_new_session(self, mock_memory, capsys):
+        from copilot_memory.cli import cmd_session_merge
+
+        tmp_path, project_dir = mock_memory
+        self._write_extra_session(project_dir, "extra-1", filesChanged=["x.py"])
+
+        with patch("copilot_memory.cli.find_project_dir", return_value=project_dir):
+            code = cmd_session_merge(MergeArgs(
+                sids=["test-session-001", "extra-1"],
+                new_id="merged-1",
+            ))
+        out = capsys.readouterr().out
+        assert code == 0
+        assert "Merged" in out
+        merged_path = project_dir / "sessions" / "_default" / "merged-1.json"
+        assert merged_path.exists()
+        data = json.loads(merged_path.read_text(encoding="utf-8"))
+        assert data["parents"] == ["test-session-001", "extra-1"]
+        assert "x.py" in data["filesChanged"]
+
+    def test_merge_dry_run_writes_nothing(self, mock_memory, capsys):
+        from copilot_memory.cli import cmd_session_merge
+
+        tmp_path, project_dir = mock_memory
+        with patch("copilot_memory.cli.find_project_dir", return_value=project_dir):
+            code = cmd_session_merge(MergeArgs(
+                sids=["test-session-001"],
+                new_id="preview-1",
+                dry_run=True,
+            ))
+        assert code == 0
+        out = capsys.readouterr().out
+        assert "dry-run" in out
+        assert not (project_dir / "sessions" / "_default" / "preview-1.json").exists()
+
+    def test_merge_missing_parent_returns_two(self, mock_memory, capsys):
+        from copilot_memory.cli import cmd_session_merge
+
+        tmp_path, project_dir = mock_memory
+        with patch("copilot_memory.cli.find_project_dir", return_value=project_dir):
+            code = cmd_session_merge(MergeArgs(
+                sids=["nonexistent"],
+                new_id="x",
+            ))
+        assert code == 2
+        assert "Unknown session" in capsys.readouterr().out

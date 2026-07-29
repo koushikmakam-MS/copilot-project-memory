@@ -21,6 +21,7 @@ import sys
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 from copilot_memory.models import (
     ContextFile,
@@ -37,19 +38,24 @@ from copilot_memory.store import (
     GLOBAL_DIR,
     MEMORY_ROOT,
     TEMPLATE_DIR,
+    archive_closed_sessions,
     check_session_integrity,
     ensure_project_dir,
     find_project_dir,
+    find_session_file,
     get_dir_size,
     list_sessions,
     load_context,
     load_latest_session,
     load_prefs,
     load_rules,
+    load_session,
+    merge_sessions,
     save_rules,
     save_context,
     save_prefs,
     save_latest_session,
+    session_needs_compaction,
     _read_yaml,
     _write_yaml,
     _read_json,
@@ -165,6 +171,11 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(f"\n{_c(BOLD, '📝 Last session:')}")
         print(f"  {last.summary or '(no summary)'}")
         print(f"  Status: {last.status} | Updated: {last.lastUpdatedAt[:10] if last.lastUpdatedAt else 'unknown'}")
+        if last.compactionCount:
+            print(f"  🗜️  Compactions: {last.compactionCount}")
+        needs, reasons = session_needs_compaction(last)
+        if needs:
+            print(f"  {_c(YELLOW, '⚠️  Ready for compaction:')} {'; '.join(reasons)}")
         if latest.activeSession:
             print(f"  📌 Active named session: {latest.activeSession}")
 
@@ -312,10 +323,28 @@ def cmd_compact(args: argparse.Namespace) -> int:
     print(f"\n{_c(BOLD + CYAN, '📊 Compact: Enforcing storage caps')}\n")
     actions = 0
 
+    def _all_sessions(folder: Path) -> list[Path]:
+        return sorted(
+            [p for p in folder.iterdir() if p.is_file()
+             and (p.suffix == ".json" or p.name.endswith(".json.gz"))
+             and p.name != "latest.json"],
+            key=lambda p: p.stat().st_mtime,
+        )
+
+    # 0. Archive closed sessions older than 7 days (gzip in place)
+    archived = archive_closed_sessions(project_dir, older_than_days=7)
+    if archived:
+        saved = sum(orig - gz for _, _, orig, gz in archived)
+        for _, gz_path, orig, gz in archived:
+            pct = int(100 * (1 - gz / orig)) if orig else 0
+            print(f"  {_c(GREEN, '🗜️ ')} Archived {gz_path.name} ({orig}B → {gz}B, -{pct}%)")
+        print(f"  {_c(GREEN, f'    ↳ saved {saved} bytes total')}")
+        actions += len(archived)
+
     # 1. Cap default sessions at 10
     default_dir = project_dir / "sessions" / "_default"
     if default_dir.exists():
-        sessions = sorted(default_dir.glob("*.json"), key=lambda p: p.stat().st_mtime)
+        sessions = _all_sessions(default_dir)
         if len(sessions) > 10:
             to_remove = sessions[:len(sessions) - 10]
             for s in to_remove:
@@ -328,7 +357,7 @@ def cmd_compact(args: argparse.Namespace) -> int:
     if sessions_dir.exists():
         for subdir in sessions_dir.iterdir():
             if subdir.is_dir() and subdir.name != "_default":
-                entries = sorted(subdir.glob("*.json"), key=lambda p: p.stat().st_mtime)
+                entries = _all_sessions(subdir)
                 if len(entries) > 20:
                     to_remove = entries[:len(entries) - 20]
                     for e in to_remove:
@@ -379,6 +408,111 @@ def cmd_compact(args: argparse.Namespace) -> int:
         print(f"  {_c(GREEN, '✅ Nothing to compact — all within limits.')}")
 
     print()
+    return 0
+
+
+def cmd_session_archive(args: argparse.Namespace) -> int:
+    """Gzip closed sessions older than N days."""
+    project_dir = find_project_dir(args.cwd)
+    if not project_dir:
+        print(f"{_c(RED, '❌ No project memory found.')}")
+        return 2
+
+    days = getattr(args, "older_than_days", 7)
+    archived = archive_closed_sessions(project_dir, older_than_days=days)
+    if not archived:
+        print(f"{_c(GREEN, f'✅ Nothing to archive (no closed sessions older than {days} days).')}")
+        return 0
+
+    saved = 0
+    for _, gz_path, orig, gz in archived:
+        pct = int(100 * (1 - gz / orig)) if orig else 0
+        saved += orig - gz
+        print(f"  {_c(GREEN, '🗜️ ')} {gz_path.name} ({orig}B → {gz}B, -{pct}%)")
+    print(f"\n  {_c(GREEN, f'✅ Archived {len(archived)} session(s), saved {saved} bytes.')}")
+    return 0
+
+
+def cmd_session_merge(args: argparse.Namespace) -> int:
+    """Merge multiple parent sessions into a new session."""
+    project_dir = find_project_dir(args.cwd)
+    if not project_dir:
+        print(f"{_c(RED, '❌ No project memory found.')}")
+        return 2
+
+    parent_ids = list(getattr(args, "sids", []) or [])
+    if len(parent_ids) < 1:
+        print(f"{_c(RED, '❌ Provide at least one parent session id.')}")
+        return 2
+
+    new_sid = getattr(args, "new_id", None) or str(uuid.uuid4())
+    try:
+        merged, path = merge_sessions(
+            project_dir,
+            parent_ids=parent_ids,
+            new_session_id=new_sid,
+            now_iso_str=now_iso(),
+            into_name=getattr(args, "into", None),
+            dry_run=getattr(args, "dry_run", False),
+        )
+    except ValueError as e:
+        print(f"{_c(RED, '❌')} {e}")
+        return 2
+
+    if getattr(args, "dry_run", False):
+        print(f"{_c(BOLD + CYAN, '🔍 Merge preview (dry-run):')}")
+        print(f"  new sessionId: {merged.sessionId}")
+        print(f"  parents: {', '.join(merged.parents)}")
+        print(f"  filesChanged: {len(merged.filesChanged)}")
+        print(f"  decisions (verbatim): {len(merged.decisions)}")
+        print(f"  learnings (verbatim): {len(merged.learnings)}")
+        print(f"  compactionCount: {merged.compactionCount}")
+        return 0
+
+    print(f"{_c(GREEN, '✅ Merged')} {len(merged.parents)} session(s) → {path}")
+    print(f"  sessionId: {merged.sessionId}")
+    print(f"  parents: {', '.join(merged.parents)}")
+    print(f"  files: {len(merged.filesChanged)}, decisions: {len(merged.decisions)}, learnings: {len(merged.learnings)}")
+    return 0
+
+
+def cmd_session_check_size(args: argparse.Namespace) -> int:
+    """Return exit 1 when the target session crosses any compaction threshold.
+
+    Target resolution order:
+      1. --path <file>    (explicit)
+      2. --session-id <id> (searched in project sessions/)
+      3. latest.json      (default)
+    """
+    project_dir = find_project_dir(args.cwd)
+    if not project_dir:
+        print(f"{_c(RED, '❌ No project memory found.')}")
+        return 2
+
+    path: Optional[Path] = None
+    if getattr(args, "path", None):
+        path = Path(args.path)
+    elif getattr(args, "session_id", None):
+        path = find_session_file(project_dir, args.session_id)
+    else:
+        latest = load_latest_session(project_dir)
+        if latest and latest.lastSessionId:
+            path = find_session_file(project_dir, latest.lastSessionId)
+
+    if not path or not path.exists():
+        print(f"{_c(RED, '❌ Session not found.')}")
+        return 2
+
+    entry = load_session(path)
+    if not entry:
+        print(f"{_c(RED, '❌ Session file could not be parsed:')} {path}")
+        return 2
+
+    needs, reasons = session_needs_compaction(entry)
+    if needs:
+        print(f"{_c(YELLOW, '⚠️  compaction recommended:')} {'; '.join(reasons)}")
+        return 1
+    print(f"{_c(GREEN, '✅ within limits')}")
     return 0
 
 
@@ -571,6 +705,41 @@ def main():
                           help="Export target (default: stdout)")
     _add_cwd(p_export)
 
+    # session (group)
+    p_session = sub.add_parser("session", help="Session-level helpers")
+    session_sub = p_session.add_subparsers(dest="session_command",
+                                           help="Session subcommands")
+
+    p_check = session_sub.add_parser(
+        "check-size",
+        help="Exit 1 if a session crosses compaction thresholds (else 0)",
+    )
+    p_check.add_argument("--path", help="Explicit path to a session JSON file")
+    p_check.add_argument("--session-id", dest="session_id",
+                         help="Look up session by ID (searches sessions/**)")
+    _add_cwd(p_check)
+
+    p_arch = session_sub.add_parser(
+        "archive",
+        help="Gzip closed sessions older than N days (default: 7)",
+    )
+    p_arch.add_argument("--older-than-days", dest="older_than_days",
+                        type=int, default=7,
+                        help="Only archive closed sessions this many days old (default: 7)")
+    _add_cwd(p_arch)
+
+    p_merge = session_sub.add_parser(
+        "merge",
+        help="Merge N existing sessions into a new session (inherits their context)",
+    )
+    p_merge.add_argument("sids", nargs="+", help="Parent session IDs to merge")
+    p_merge.add_argument("--into", help="Target named-session folder (default: _default)")
+    p_merge.add_argument("--new-id", dest="new_id",
+                         help="Explicit session ID for the merged session (default: random UUID)")
+    p_merge.add_argument("--dry-run", dest="dry_run", action="store_true",
+                         help="Preview merge without writing")
+    _add_cwd(p_merge)
+
     args = parser.parse_args()
 
     if args.command == "status":
@@ -585,6 +754,15 @@ def main():
         sys.exit(cmd_schema_fix(args))
     elif args.command == "export":
         sys.exit(cmd_export(args))
+    elif args.command == "session":
+        if getattr(args, "session_command", None) == "check-size":
+            sys.exit(cmd_session_check_size(args))
+        if getattr(args, "session_command", None) == "archive":
+            sys.exit(cmd_session_archive(args))
+        if getattr(args, "session_command", None) == "merge":
+            sys.exit(cmd_session_merge(args))
+        parser.parse_args(["session", "--help"])
+        sys.exit(0)
     else:
         parser.print_help()
         sys.exit(0)

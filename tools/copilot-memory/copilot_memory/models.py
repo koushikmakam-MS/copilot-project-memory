@@ -80,6 +80,9 @@ class SessionEntry(BaseModel):
     filesChanged: list[str] = []
     decisions: list[str] = []
     learnings: list[str] = []
+    compactedSummary: str = ""
+    compactionCount: int = 0
+    parents: list[str] = []
 
     @field_validator("status")
     @classmethod
