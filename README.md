@@ -209,6 +209,25 @@ Working on multiple features in the same project? Use named sessions — like br
 
 Auto-save writes to the **active named session** automatically. `:resume` picks up wherever you left off.
 
+#### Merging Sessions (Combine Multiple Contexts)
+
+Have context spread across several past sessions and want to start fresh work that pulls from all of them? Merge them into one:
+
+```
+:merge auth-refactor api-cleanup                — Merge two sessions into a new default session
+:merge auth-refactor api-cleanup into feature-x — Merge into a named session
+```
+
+Under the hood this calls `copilot-memory session merge <sids…> [--into NAME] [--dry-run]`. The new session:
+
+- **Unions & dedupes** `filesChanged`, `decisions`, `learnings` from every parent (preserving order).
+- Bakes each parent's digest into `compactedSummary` — one shot of tokens on reload, no need to load parent files.
+- Records `parents: ["<sid1>", "<sid2>", …]` for full lineage.
+- Auto-applies compaction thresholds — if combined entries exceed 20, only the last 5 of each are kept verbatim; the rest overflow into `compactedSummary`.
+- **Never mutates parents** — they stay untouched and can still be resumed individually.
+
+Add `--dry-run` to preview the merge without writing.
+
 #### Pipeline Executor (Deterministic Task Execution)
 
 Force Copilot to decompose, verify, and audit every step of complex tasks — with **two-layer verification**:
@@ -317,6 +336,25 @@ Memory doesn't grow forever. The system enforces **hard caps** and provides tool
 | Hotspots (tracking) | 5 | Lowest touch_count dropped |
 | Error patterns (tracking) | 10 | Oldest dropped |
 | Explicit rules | ∞ | **Never auto-deleted** |
+| Individual session size | 8 KB / 20 entries / 30 files | Older entries collapsed into `compactedSummary` on save |
+| Closed sessions > 7 days | — | Auto-gzipped into `<sid>.json.gz` (transparent reads) |
+
+### Session Auto-Compaction (Token Savings)
+
+Each session file has hard growth limits — as soon as any threshold is crossed, older `decisions`/`learnings` are collapsed into a `compactedSummary` field before the file is written back:
+
+- `len(decisions) + len(learnings) > 20`, **or**
+- `len(filesChanged) > 30`, **or**
+- serialized JSON size > 8 KB
+
+Only the **last 5** decisions and **last 5** learnings are kept verbatim. This keeps reload token cost bounded no matter how long a session runs. Check any session's status with:
+
+```
+copilot-memory session check-size            — Exit 1 if latest session needs compacting
+copilot-memory session check-size --path P   — Check a specific file
+```
+
+Closed sessions older than 7 days are additionally **gzipped** into `<sid>.json.gz` — reads are transparent, so `:resume` and integrity checks still work seamlessly. Trigger manually with `copilot-memory session archive [--older-than-days N]`.
 
 ### Staleness Tracking
 
@@ -393,10 +431,10 @@ tools/
 └── copilot-memory/                 # Memory management CLI (NEW in v2)
     ├── pyproject.toml
     ├── copilot_memory/
-    │   ├── cli.py                  # CLI: 6 commands (status, verify, compact, init, schema-fix, export)
+    │   ├── cli.py                  # CLI: status, verify, compact, init, schema-fix, export, session
     │   ├── models.py               # Pydantic schemas (Rule, Context, Session)
     │   └── store.py                # File I/O with validation, atomic writes, BOM handling
-    └── tests/                      # 56 tests (models, store, CLI integration)
+    └── tests/                      # 81 tests (models, store, CLI, compaction, archival, merge)
 ```
 
 ### copilot-memory CLI (New in v2)
@@ -407,11 +445,16 @@ Deterministic memory management — the AI calls this for complex operations:
 copilot-memory status              # Show project memory overview
 copilot-memory verify              # Check integrity of all memory files
 copilot-memory verify --fix        # Auto-fix integrity issues (dangling sessions, ID mismatches)
-copilot-memory compact             # Enforce storage caps, prune stale data
+copilot-memory compact             # Enforce storage caps, prune stale data, gzip archive closed sessions
 copilot-memory init                # Initialize memory for a new project
 copilot-memory schema-fix          # Add missing schema_version headers to YAML files
 copilot-memory export team         # Export shared rules to .github/instructions/project-memory.instructions.md
 copilot-memory export stdout       # Export to stdout (for piping)
+
+# Session-level helpers (v2.1)
+copilot-memory session check-size [--path P | --session-id ID]   # Exit 1 if session needs compacting
+copilot-memory session archive [--older-than-days N]             # Gzip closed sessions older than N days (default 7)
+copilot-memory session merge <sid1> <sid2> ... [--into NAME] [--new-id ID] [--dry-run]   # Merge sessions
 ```
 
 **What it handles that the AI doesn't:**

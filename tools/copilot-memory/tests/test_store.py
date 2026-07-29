@@ -238,3 +238,281 @@ class TestProjectSlug:
         slug1 = make_project_slug("/repo/project-a")
         slug2 = make_project_slug("/repo/project-b")
         assert slug1 != slug2
+
+
+class TestSessionCompactionThreshold:
+    def _mk(self, **kwargs):
+        base = dict(
+            sessionId="s1",
+            status="active",
+            startedAt="2026-06-11T00:00:00Z",
+            lastUpdatedAt="2026-06-11T00:00:00Z",
+        )
+        base.update(kwargs)
+        return SessionEntry(**base)
+
+    def test_empty_session_within_limits(self):
+        from copilot_memory.store import session_needs_compaction
+
+        needs, reasons = session_needs_compaction(self._mk())
+        assert not needs
+        assert reasons == []
+
+    def test_entries_threshold_trips(self):
+        from copilot_memory.store import session_needs_compaction
+
+        entry = self._mk(
+            decisions=[f"d{i}" for i in range(15)],
+            learnings=[f"l{i}" for i in range(10)],
+        )
+        needs, reasons = session_needs_compaction(entry)
+        assert needs
+        assert any("decisions+learnings" in r for r in reasons)
+
+    def test_files_threshold_trips(self):
+        from copilot_memory.store import session_needs_compaction
+
+        entry = self._mk(filesChanged=[f"src/f{i}.py" for i in range(31)])
+        needs, reasons = session_needs_compaction(entry)
+        assert needs
+        assert any("filesChanged" in r for r in reasons)
+
+    def test_size_threshold_trips(self):
+        from copilot_memory.store import session_needs_compaction
+
+        entry = self._mk(summary="x" * (9 * 1024))
+        needs, reasons = session_needs_compaction(entry)
+        assert needs
+        assert any("size=" in r for r in reasons)
+
+    def test_boundary_20_entries_still_ok(self):
+        from copilot_memory.store import session_needs_compaction
+
+        entry = self._mk(
+            decisions=[f"d{i}" for i in range(10)],
+            learnings=[f"l{i}" for i in range(10)],
+        )
+        needs, reasons = session_needs_compaction(entry)
+        assert not needs
+
+    def test_defaults_for_new_fields(self):
+        entry = self._mk()
+        assert entry.compactedSummary == ""
+        assert entry.compactionCount == 0
+
+    def test_new_fields_roundtrip(self):
+        entry = self._mk(compactedSummary="prose", compactionCount=3)
+        dumped = entry.model_dump()
+        assert dumped["compactedSummary"] == "prose"
+        assert dumped["compactionCount"] == 3
+
+
+class TestSessionArchival:
+    def _mk_session_file(self, sessions_dir, sid, status, ended_at,
+                        started_at="2026-01-01T00:00:00Z"):
+        path = sessions_dir / f"{sid}.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({
+            "sessionId": sid,
+            "status": status,
+            "startedAt": started_at,
+            "lastUpdatedAt": ended_at,
+            "endedAt": ended_at if status == "closed" else None,
+            "summary": "x" * 500,
+        }), encoding="utf-8")
+        return path
+
+    def test_archives_old_closed_sessions(self, tmp_project):
+        from datetime import datetime, timezone
+        from copilot_memory.store import archive_closed_sessions, load_session
+
+        sd = tmp_project / "sessions" / "_default"
+        old_path = self._mk_session_file(sd, "old-closed", "closed",
+                                         "2020-01-01T00:00:00Z")
+
+        now = datetime(2026, 6, 11, tzinfo=timezone.utc)
+        archived = archive_closed_sessions(tmp_project, older_than_days=7, now=now)
+
+        assert len(archived) == 1
+        assert not old_path.exists()
+        gz = old_path.with_suffix(".json.gz")
+        assert gz.exists()
+        # Transparent read still works
+        entry = load_session(gz)
+        assert entry is not None
+        assert entry.sessionId == "old-closed"
+
+    def test_skips_active_sessions(self, tmp_project):
+        from datetime import datetime, timezone
+        from copilot_memory.store import archive_closed_sessions
+
+        sd = tmp_project / "sessions" / "_default"
+        p = self._mk_session_file(sd, "active-one", "active",
+                                  "2020-01-01T00:00:00Z")
+        now = datetime(2026, 6, 11, tzinfo=timezone.utc)
+        archived = archive_closed_sessions(tmp_project, older_than_days=7, now=now)
+        assert archived == []
+        assert p.exists()
+
+    def test_skips_recent_closed_sessions(self, tmp_project):
+        from datetime import datetime, timezone
+        from copilot_memory.store import archive_closed_sessions
+
+        sd = tmp_project / "sessions" / "_default"
+        p = self._mk_session_file(sd, "recent-closed", "closed",
+                                  "2026-06-10T00:00:00Z")
+        now = datetime(2026, 6, 11, tzinfo=timezone.utc)
+        archived = archive_closed_sessions(tmp_project, older_than_days=7, now=now)
+        assert archived == []
+        assert p.exists()
+
+    def test_transparent_fallback_when_only_gz_exists(self, tmp_project):
+        from copilot_memory.store import _read_json
+        import gzip as _gz
+
+        sd = tmp_project / "sessions" / "_default"
+        gz = sd / "only.json.gz"
+        gz.parent.mkdir(parents=True, exist_ok=True)
+        gz.write_bytes(_gz.compress(json.dumps({"sessionId": "only"}).encode()))
+        # Requesting the .json path should transparently read the .gz sibling
+        data = _read_json(sd / "only.json")
+        assert data == {"sessionId": "only"}
+
+    def test_find_session_file_finds_gz(self, tmp_project):
+        from datetime import datetime, timezone
+        from copilot_memory.store import archive_closed_sessions, find_session_file
+
+        sd = tmp_project / "sessions" / "_default"
+        self._mk_session_file(sd, "old-closed", "closed", "2020-01-01T00:00:00Z")
+        archive_closed_sessions(tmp_project, older_than_days=7,
+                                 now=datetime(2026, 6, 11, tzinfo=timezone.utc))
+        found = find_session_file(tmp_project, "old-closed")
+        assert found is not None
+        assert found.name.endswith(".json.gz")
+
+    def test_list_sessions_includes_gz(self, tmp_project):
+        from datetime import datetime, timezone
+        from copilot_memory.store import archive_closed_sessions, list_sessions
+
+        sd = tmp_project / "sessions" / "_default"
+        self._mk_session_file(sd, "old-closed", "closed", "2020-01-01T00:00:00Z")
+        self._mk_session_file(sd, "active-one", "active", "2026-06-10T00:00:00Z")
+        archive_closed_sessions(tmp_project, older_than_days=7,
+                                 now=datetime(2026, 6, 11, tzinfo=timezone.utc))
+        entries = list_sessions(tmp_project)
+        ids = {e.sessionId for _, e in entries}
+        assert ids == {"old-closed", "active-one"}
+
+
+class TestSessionMerge:
+    def _mk(self, sid, **kwargs):
+        base = dict(
+            sessionId=sid,
+            status="active",
+            startedAt="2026-06-01T00:00:00Z",
+            lastUpdatedAt="2026-06-01T00:00:00Z",
+        )
+        base.update(kwargs)
+        return SessionEntry(**base)
+
+    def _write(self, project_dir, entry):
+        from copilot_memory.store import _write_json
+        p = project_dir / "sessions" / "_default" / f"{entry.sessionId}.json"
+        p.parent.mkdir(parents=True, exist_ok=True)
+        _write_json(p, entry.model_dump())
+        return p
+
+    def test_merge_two_sessions_unions_and_dedupes(self, tmp_project):
+        from copilot_memory.store import merge_sessions, load_session
+
+        a = self._mk("sess-a",
+                     filesChanged=["a.py", "shared.py"],
+                     decisions=["chose SQLite"],
+                     learnings=["needs indexing"])
+        b = self._mk("sess-b",
+                     filesChanged=["b.py", "shared.py"],
+                     decisions=["chose FastAPI"],
+                     learnings=["needs indexing", "uvicorn under gunicorn"])
+        self._write(tmp_project, a)
+        self._write(tmp_project, b)
+
+        merged, path = merge_sessions(
+            tmp_project,
+            parent_ids=["sess-a", "sess-b"],
+            new_session_id="merged-1",
+            now_iso_str="2026-06-11T00:00:00Z",
+        )
+        assert path.exists()
+        assert merged.parents == ["sess-a", "sess-b"]
+        # union + dedupe
+        assert merged.filesChanged == ["a.py", "shared.py", "b.py"]
+        assert set(merged.decisions) == {"chose SQLite", "chose FastAPI"}
+        assert set(merged.learnings) == {"needs indexing", "uvicorn under gunicorn"}
+        # persisted file matches
+        reloaded = load_session(path)
+        assert reloaded.parents == ["sess-a", "sess-b"]
+        assert reloaded.compactedSummary  # digest was written
+
+    def test_merge_pushes_overflow_into_compacted_summary(self, tmp_project):
+        from copilot_memory.store import merge_sessions
+
+        a = self._mk("sess-a",
+                     decisions=[f"d{i}" for i in range(15)],
+                     learnings=[f"l{i}" for i in range(15)])
+        self._write(tmp_project, a)
+        merged, _ = merge_sessions(
+            tmp_project,
+            parent_ids=["sess-a"],
+            new_session_id="merged-1",
+            now_iso_str="2026-06-11T00:00:00Z",
+        )
+        # Overflow: only last 5 of each kept verbatim
+        assert merged.decisions == [f"d{i}" for i in range(10, 15)]
+        assert merged.learnings == [f"l{i}" for i in range(10, 15)]
+        assert merged.compactionCount >= 1
+        assert "older decisions dropped" in merged.compactedSummary
+
+    def test_merge_missing_parent_raises(self, tmp_project):
+        from copilot_memory.store import merge_sessions
+
+        self._write(tmp_project, self._mk("real"))
+        with pytest.raises(ValueError, match="Unknown session"):
+            merge_sessions(
+                tmp_project,
+                parent_ids=["real", "ghost"],
+                new_session_id="x",
+                now_iso_str="2026-06-11T00:00:00Z",
+            )
+
+    def test_merge_dry_run_does_not_write(self, tmp_project):
+        from copilot_memory.store import merge_sessions
+
+        self._write(tmp_project, self._mk("sess-a", filesChanged=["a.py"]))
+        merged, path = merge_sessions(
+            tmp_project,
+            parent_ids=["sess-a"],
+            new_session_id="preview-1",
+            now_iso_str="2026-06-11T00:00:00Z",
+            dry_run=True,
+        )
+        assert path is None
+        assert merged.parents == ["sess-a"]
+        # Nothing new on disk
+        default_dir = tmp_project / "sessions" / "_default"
+        assert not (default_dir / "preview-1.json").exists()
+
+    def test_merge_into_named_folder_updates_latest(self, tmp_project):
+        from copilot_memory.store import merge_sessions, load_latest_session
+
+        self._write(tmp_project, self._mk("sess-a"))
+        merged, path = merge_sessions(
+            tmp_project,
+            parent_ids=["sess-a"],
+            new_session_id="feature-x-1",
+            now_iso_str="2026-06-11T00:00:00Z",
+            into_name="feature-x",
+        )
+        assert "feature-x" in str(path)
+        latest = load_latest_session(tmp_project)
+        assert latest.lastSessionId == "feature-x-1"
+        assert latest.activeSession == "feature-x"
